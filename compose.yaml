@@ -1,0 +1,17 @@
+services:
+  php:
+    build:
+      context: docker/php
+    volumes:
+      - .:/app
+      - composer-cache:/tmp/composer-cache
+    environment:
+      COMPOSER_CACHE_DIR: /tmp/composer-cache
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    working_dir: /app
+    tty: true
+
+volumes:
+  composer-cache:

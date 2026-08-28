@@ -1,0 +1,7 @@
+source:
+    paths:
+        - src
+ruleset: architecture.md
+cache:
+    directory: .spandrel-cache
+baseline: spandrel-baseline.json
