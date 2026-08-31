@@ -174,47 +174,11 @@ jobs:
         run: cp spandrel-src/LICENSE dist/LICENSE
 
       - name: Write README
-        run: |
-          cat > dist/README.md <<MD
-          # Spandrel
-
-          This repository holds Spandrel's compiled, release-ready \`spandrel.phar\` —
-          the artifact \`composer require spandrel/spandrel\` installs, or that you
-          can download and run directly. It is published automatically from
-          [spandrel-php/spandrel-src](https://github.com/spandrel-php/spandrel-src),
-          where Spandrel's source, issues and pull requests live. See
-          [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
-
-          ## Usage
-
-          \`\`\`sh
-          composer require --dev spandrel/spandrel
-          vendor/bin/spandrel analyse
-          \`\`\`
-
-          Or run the PHAR directly:
-
-          \`\`\`sh
-          curl -LO https://github.com/spandrel-php/spandrel/raw/${{ github.ref_name }}/spandrel.phar
-          php spandrel.phar analyse
-          \`\`\`
-
-          Signed with \`spandrel.phar.asc\`. Verify against the bundled public
-          key (fingerprint \`${{ steps.import-gpg.outputs.fingerprint }}\`):
-
-          \`\`\`sh
-          gpg --import spandrel-bot.gpg.asc
-          gpg --verify spandrel.phar.asc spandrel.phar
-          \`\`\`
-
-          The same key is also published on
-          [keys.openpgp.org](https://keys.openpgp.org), fetchable by
-          fingerprint without trusting this repo for the key itself:
-
-          \`\`\`sh
-          gpg --keyserver hkps://keys.openpgp.org --recv-keys ${{ steps.import-gpg.outputs.fingerprint }}
-          \`\`\`
-          MD
+        # docs/README.md (the User Guide) is written to double as this
+        # repo's README — see the note at its own top. It's self-contained
+        # (absolute links back to spandrel-src for everything that doesn't
+        # live in this repo), so no per-release templating is needed here.
+        run: cp spandrel-src/docs/README.md dist/README.md
 
       - name: Get git log
         id: git-log
