@@ -12,6 +12,7 @@ use Spandrel\Spandrel\Console\InitCommand;
 use Spandrel\Spandrel\Console\LintCommand;
 use Spandrel\Spandrel\Console\RulesetLoader;
 use Spandrel\Spandrel\Console\SourceGraphBuilder;
+use Spandrel\Spandrel\Console\Version;
 use Spandrel\Spandrel\Loader\Loader;
 use Spandrel\Spandrel\Parser\Parser;
 use Spandrel\Spandrel\RuleEngine\RuleEngine;
@@ -28,7 +29,7 @@ $rulesetLoader = new RulesetLoader(new RulesetParser());
 $sourceGraphBuilder = new SourceGraphBuilder(new Loader(), new Parser());
 $ruleEngine = new RuleEngine();
 
-$application = new Application('Spandrel');
+$application = new Application('Spandrel', Version::current());
 $application->addCommand(new DebugLayersCommand($configLoader, $rulesetLoader, $sourceGraphBuilder));
 $application->addCommand(new LintCommand($configLoader, $rulesetLoader, $sourceGraphBuilder));
 $application->addCommand(new DebugRulesetCommand($configLoader, $rulesetLoader, $sourceGraphBuilder));

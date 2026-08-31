@@ -3,3 +3,6 @@ vendor/
 .phpunit.cache/
 .spandrel-cache/
 coverage/
+/box.phar
+/spandrel.phar
+/spandrel.phar.asc
