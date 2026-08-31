@@ -1,4 +1,10 @@
-# Spandrel User Guide
+# Spandrel
+
+> Published automatically as the README for
+> [spandrel-php/spandrel](https://github.com/spandrel-php/spandrel),
+> Spandrel's release repo (the `spandrel.phar` and `spandrel/spandrel`
+> Composer package live there) — source, issues, and pull requests
+> live in [spandrel-php/spandrel-src](https://github.com/spandrel-php/spandrel-src).
 
 Spandrel checks that your codebase's actual dependencies match the
 architecture you've written down — a Markdown file defines named
@@ -7,10 +13,9 @@ dependencies between them), and `analyse` reports every dependency
 edge that breaks a rule.
 
 This guide is task-oriented: how to run Spandrel and how to write a
-ruleset. For the reasoning behind the design, see [docs/](docs/README.md)
-(architecture-level docs aimed at people working on Spandrel itself)
-and Spandrel's own [`docs/architecture.md`](docs/architecture.md), a
-real ruleset dogfooded on every run.
+ruleset. For the reasoning behind the design, see Spandrel's own
+[`docs/architecture.md`](https://github.com/spandrel-php/spandrel-src/blob/main/docs/architecture.md),
+a real ruleset dogfooded on every run.
 
 ## Requirements
 
@@ -24,10 +29,29 @@ Install Spandrel into the project you want to analyse:
 composer require --dev spandrel/spandrel
 ```
 
-This adds `vendor/bin/spandrel`, backed by a signed `spandrel.phar`
-published to [spandrel-php/spandrel](https://github.com/spandrel-php/spandrel)
-— see that repo if you'd rather download and run the phar directly,
-without Composer.
+This adds `vendor/bin/spandrel`, backed by a signed `spandrel.phar` —
+see [CHANGELOG.md](https://github.com/spandrel-php/spandrel/blob/main/CHANGELOG.md)
+for release history.
+
+Or download and run the phar directly, without Composer:
+
+```sh
+curl -LO https://github.com/spandrel-php/spandrel/raw/main/spandrel.phar
+php spandrel.phar analyse
+```
+
+Every release is signed — verify `spandrel.phar.asc` against the
+bundled public key before trusting a download (fingerprint
+`824682B3BE7DE81A8108FA98CE6235F34D7E5C43`; check it against what
+`gpg --import` itself reports, in case this key is ever rotated —
+also published on [keys.openpgp.org](https://keys.openpgp.org)):
+
+```sh
+curl -LO https://github.com/spandrel-php/spandrel/raw/main/spandrel-bot.gpg.asc
+curl -LO https://github.com/spandrel-php/spandrel/raw/main/spandrel.phar.asc
+gpg --import spandrel-bot.gpg.asc
+gpg --verify spandrel.phar.asc spandrel.phar
+```
 
 `init` and `spandrel.yaml`/`architecture.md` auto-discovery are both
 relative to the **current working directory** — run these from the
@@ -49,13 +73,14 @@ commands never exit `1`, since they don't evaluate violations.
 
 ### Running from source instead
 
-To work on Spandrel itself, or run an unreleased commit, see the main
-[README](README.md) (Docker, or a local PHP 8.5+/Composer install) and
-substitute `bin/spandrel.php` for `vendor/bin/spandrel` above — pointed
-at the project you want to analyse, since `init`/`spandrel.yaml`
-discovery is relative to the working directory, not this clone. If
-you're running via the project's own `docker compose` setup, note the
-shipped `compose.yaml` only mounts this clone's own directory into the
+To work on Spandrel itself, or run an unreleased commit, see the
+[main README](https://github.com/spandrel-php/spandrel-src/blob/main/README.md)
+(Docker, or a local PHP 8.5+/Composer install) and substitute
+`bin/spandrel.php` for `vendor/bin/spandrel` above — pointed at the
+project you want to analyse, since `init`/`spandrel.yaml` discovery is
+relative to the working directory, not this clone. If you're running
+via the project's own `docker compose` setup, note the shipped
+`compose.yaml` only mounts this clone's own directory into the
 container — to analyse a project outside this repo that way, add your
 own bind mount for it (or a temporary one via
 `docker compose run -v /path/to/project:/target ...`).
@@ -137,7 +162,7 @@ edge kind: `` `App\**` may only depend on interfaces in `Symfony\**` ``.
 Grammar: `(classes|interfaces|traits|enums)[, ...] in <operand>`, valid
 on either side of a rule. Needs a real parsed `Element` for the
 target — doesn't work against vendor code unless that vendor path is
-in `source.paths` (an [external layer](docs/ruleset.md#external-layers)
+in `source.paths` (an [external layer](https://github.com/spandrel-php/spandrel-src/blob/main/docs/ruleset.md#external-layers)
 alone isn't enough for this one case).
 
 #### Lists
@@ -204,7 +229,7 @@ baseline: spandrel-baseline.json
 
 | Key | Meaning |
 |---|---|
-| `source.paths` | Directories Spandrel parses. Only code here gets a real `Element` — everything else (including `vendor/`) is invisible to layer/kind-filter matching, though a plain pattern rule still catches it (see [external layers](docs/ruleset.md#external-layers)). |
+| `source.paths` | Directories Spandrel parses. Only code here gets a real `Element` — everything else (including `vendor/`) is invisible to layer/kind-filter matching, though a plain pattern rule still catches it (see [external layers](https://github.com/spandrel-php/spandrel-src/blob/main/docs/ruleset.md#external-layers)). |
 | `source.exclude` | Paths to skip within `source.paths`. |
 | `ruleset` | Default ruleset file, overridable with `--ruleset`. |
 | `cache.directory` | Where parsed-file results are cached between runs. |
@@ -212,7 +237,7 @@ baseline: spandrel-baseline.json
 
 ## Where to go next
 
-- [`docs/ruleset.md`](docs/ruleset.md) — the Ruleset file, `## Layers`, and `## Meta` in depth.
-- [`docs/cli.md`](docs/cli.md) — every command and option, in depth.
-- [`docs/report.md`](docs/report.md) — what each `--report` format actually contains.
-- [`docs/architecture.md`](docs/architecture.md) — Spandrel's own ruleset, a real example including a group layer and an external layer.
+- [`docs/ruleset.md`](https://github.com/spandrel-php/spandrel-src/blob/main/docs/ruleset.md) — the Ruleset file, `## Layers`, and `## Meta` in depth.
+- [`docs/cli.md`](https://github.com/spandrel-php/spandrel-src/blob/main/docs/cli.md) — every command and option, in depth.
+- [`docs/report.md`](https://github.com/spandrel-php/spandrel-src/blob/main/docs/report.md) — what each `--report` format actually contains.
+- [`docs/architecture.md`](https://github.com/spandrel-php/spandrel-src/blob/main/docs/architecture.md) — Spandrel's own ruleset, a real example including a group layer and an external layer.
