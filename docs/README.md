@@ -1,4 +1,4 @@
-# Spandrel User Guide
+# Spandrel
 
 > Published automatically as the README for
 > [spandrel-php/spandrel](https://github.com/spandrel-php/spandrel),
