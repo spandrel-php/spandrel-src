@@ -12,11 +12,11 @@ use Spandrel\Spandrel\Console\InitCommand;
 use Spandrel\Spandrel\Console\LintCommand;
 use Spandrel\Spandrel\Console\RulesetLoader;
 use Spandrel\Spandrel\Console\SourceGraphBuilder;
-use Spandrel\Spandrel\Console\Version;
 use Spandrel\Spandrel\Loader\Loader;
 use Spandrel\Spandrel\Parser\Parser;
 use Spandrel\Spandrel\RuleEngine\RuleEngine;
 use Spandrel\Spandrel\Ruleset\RulesetParser;
+use Spandrel\Spandrel\Version\Version;
 use Symfony\Component\Console\Application;
 
 require dirname(__DIR__).'/vendor/autoload.php';

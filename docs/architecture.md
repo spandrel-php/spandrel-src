@@ -1,9 +1,10 @@
 # Spandrel Architecture
 
 Dogfooding ruleset: Spandrel analysing its own codebase. Reflects the
-actual current dependency structure under `Spandrel\Spandrel\` — 10
-namespaces, `Baseline` the newest, added for
-`--baseline`/`--generate-baseline` support.
+actual current dependency structure under `Spandrel\Spandrel\` — 11
+namespaces, `Version` the newest, holding the git tag/commit `box
+compile` bakes into a release build (see [box.json](../box.json)) and
+what the SARIF reporter's `tool.driver.version` reports.
 
 Layers are declared via the `{Layer}` placeholder form — see
 [docs/ruleset.md](ruleset.md#auto-derived-layers-placeholders) —
@@ -21,7 +22,7 @@ needing to be added here by hand.
 
 - `Spandrel\Spandrel\{Layer}\**`
 
-- **IO** groups `Config`, `Loader`, `Cache`, `Reporting`, `Console`, and `Baseline`
+- **IO** groups `Config`, `Loader`, `Cache`, `Reporting`, `Console`, `Baseline`, and `Version`
 - **Core** groups `Graph`, `Ruleset`, `Parser`, and `RuleEngine`
 
 `SymfonyConsole` below is a live reference example of an [external
@@ -40,12 +41,13 @@ pattern the rule below can enforce against, with nothing added to
 - `Config` depends on nothing
 - `Graph` depends on nothing
 - `Loader` depends on nothing
+- `Version` depends on nothing
 
 - `Parser` may only depend on `Graph`
 - `Ruleset` may only depend on `Graph`
 - `RuleEngine` may only depend on `Graph` and `Ruleset`
 - `Cache` may only depend on `Graph`
-- `Reporting` may only depend on `RuleEngine`, `Graph`, and `Ruleset`
+- `Reporting` may only depend on `RuleEngine`, `Graph`, `Ruleset`, and `Version`
 - `Baseline` may only depend on `RuleEngine`
 
 - `Console` may depend on anything
@@ -68,6 +70,7 @@ flowchart LR
         Reporting
         Console
         Baseline
+        Version
     end
     subgraph Core
         Graph
@@ -92,6 +95,7 @@ flowchart LR
     Reporting -->|"3"| Graph
     Reporting -->|"7"| RuleEngine
     Reporting -->|"7"| Ruleset
+    Reporting -->|"1"| Version
     RuleEngine -->|"15"| Graph
     RuleEngine -->|"35"| Ruleset
     Ruleset -->|"16"| Graph

@@ -10,7 +10,7 @@
         "vendor/composer/installed.php"
     ],
     "force-autodiscovery": true,
-    "git-version": "Spandrel\\Spandrel\\Console\\Version::GIT_VERSION",
+    "git-version": "Spandrel\\Spandrel\\Version\\Version::GIT_VERSION",
     "compactors": [
         "KevinGH\\Box\\Compactor\\PhpScoper"
     ]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Spandrel\Spandrel\Reporting;
 
 use Spandrel\Spandrel\RuleEngine\Violation;
+use Spandrel\Spandrel\Version\Version;
 
 /**
  * SARIF 2.1.0 for CI code-scanning integrations.
@@ -21,8 +22,6 @@ use Spandrel\Spandrel\RuleEngine\Violation;
  */
 final class SarifReporter implements Reporter
 {
-    private const VERSION = 'dev';
-
     public function format(array $violations): string
     {
         $rulesById = [];
@@ -57,7 +56,7 @@ final class SarifReporter implements Reporter
                     'tool' => [
                         'driver' => [
                             'name' => 'Spandrel',
-                            'version' => self::VERSION,
+                            'version' => Version::current(),
                             'rules' => array_values($rulesById),
                         ],
                     ],
