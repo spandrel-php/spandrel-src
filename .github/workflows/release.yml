@@ -32,15 +32,29 @@ jobs:
           php-version: "8.5"
           coverage: none
 
+      - name: Composer audit
+        # A dependency about to be compiled into a signed, published PHAR
+        # should block the release outright, not just get a Dependabot PR —
+        # checked first, before any of the slower steps below, since it
+        # only needs composer.lock. --no-dev scopes it to what actually
+        # ships in the phar.
+        run: composer audit --locked --no-dev
+
       - name: Cache Composer dependencies
+        # Caches Composer's download cache, not the installed vendor/ tree —
+        # composer install still verifies dist checksums from composer.lock
+        # when unpacking a cache hit, whereas a restored vendor/ tree would
+        # be trusted as-is by version alone. This is the job that produces
+        # the phar that gets GPG-signed and published, so that check
+        # matters here. No restore-keys fallback: a lock-file miss should
+        # mean a clean, checksum-verified install, not a stale tree.
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: vendor
+          path: ~/.cache/composer/files
           key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction --no-scripts --no-plugins
 
       - name: Download box.phar
         run: |
