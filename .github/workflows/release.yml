@@ -108,10 +108,15 @@ jobs:
         run: chmod 755 dist/spandrel.phar
 
       - name: Sign PHAR
+        # --yes: dist/spandrel.phar.asc already exists here from the
+        # previous release (this is a fresh clone of the dist repo, not an
+        # empty one) — gpg refuses to overwrite an existing --output file
+        # under --batch otherwise, failing with "signing failed: File
+        # exists" rather than an obvious "file already exists" message.
         working-directory: dist
         env:
           GPG_ID: ${{ steps.import-gpg.outputs.fingerprint }}
-        run: gpg --batch --pinentry-mode loopback -u "$GPG_ID" --detach-sign --armor --output spandrel.phar.asc spandrel.phar
+        run: gpg --batch --yes --pinentry-mode loopback -u "$GPG_ID" --detach-sign --armor --output spandrel.phar.asc spandrel.phar
 
       - name: Verify signature
         working-directory: dist
