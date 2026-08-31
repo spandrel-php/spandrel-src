@@ -14,45 +14,51 @@ real ruleset dogfooded on every run.
 
 ## Requirements
 
-- PHP 8.5+ and Composer — or just [Docker](https://www.docker.com/)
-  with the Compose plugin, which is how Spandrel's own development
-  workflow runs it (see the main [README](README.md)).
-
-There's no published package yet — you run `bin/spandrel.php` from a
-clone of this repo, pointed at the project you want to analyse.
+- PHP 8.5+
 
 ## Quick start
 
+Install Spandrel into the project you want to analyse:
+
 ```sh
-git clone <this repo> spandrel && cd spandrel
-composer install
+composer require --dev spandrel/spandrel
 ```
 
+This adds `vendor/bin/spandrel`, backed by a signed `spandrel.phar`
+published to [spandrel-php/spandrel](https://github.com/spandrel-php/spandrel)
+— see that repo if you'd rather download and run the phar directly,
+without Composer.
+
 `init` and `spandrel.yaml`/`architecture.md` auto-discovery are both
-relative to the **current working directory**, not the target passed
-on the command line — so run Spandrel from inside the project you want
-to analyse, pointing at this clone's entrypoint:
+relative to the **current working directory** — run these from the
+project root:
 
 ```sh
-cd /path/to/your-project
-php /path/to/spandrel/bin/spandrel.php init
+vendor/bin/spandrel init
 # edit the generated architecture.md to match your namespaces, then:
-php /path/to/spandrel/bin/spandrel.php analyse
+vendor/bin/spandrel analyse
 ```
 
 `init` refuses to overwrite existing files unless you pass `--force`.
 Without `init`, `--ruleset=path/to/architecture.md` and a `paths`
-argument work the same way, without needing to `cd` at all.
-
-If you're running via the project's own `docker compose` setup instead
-of a local PHP install, note the shipped `compose.yaml` only
-mounts this clone's own directory into the container — to analyse
-a project outside this repo that way, add your own bind mount for it
-(or add a temporary one via `docker compose run -v /path/to/project:/target ...`).
+argument work the same way.
 
 `analyse`'s exit code is `0` (no violations), `1` (violations found), or
 `2` (the ruleset or config itself is invalid) — `lint` and the `debug:*`
 commands never exit `1`, since they don't evaluate violations.
+
+### Running from source instead
+
+To work on Spandrel itself, or run an unreleased commit, see the main
+[README](README.md) (Docker, or a local PHP 8.5+/Composer install) and
+substitute `bin/spandrel.php` for `vendor/bin/spandrel` above — pointed
+at the project you want to analyse, since `init`/`spandrel.yaml`
+discovery is relative to the working directory, not this clone. If
+you're running via the project's own `docker compose` setup, note the
+shipped `compose.yaml` only mounts this clone's own directory into the
+container — to analyse a project outside this repo that way, add your
+own bind mount for it (or a temporary one via
+`docker compose run -v /path/to/project:/target ...`).
 
 ## Writing a ruleset
 

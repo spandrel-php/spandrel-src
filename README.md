@@ -2,6 +2,21 @@
 
 Spandrel is a static analysis tool for PHP applications. It parses a codebase into a graph of architectural elements (classes, interfaces, traits, enums) and their dependencies, evaluates that graph against a human- and agent-readable set of architecture rules, and reports any violations in a format suited to the consumer — a terminal, a CI pipeline, or an agent.
 
+## Installation
+
+This repository holds Spandrel's source. Released builds — a signed
+`spandrel.phar` and the `spandrel/spandrel` Composer package — are
+published to [spandrel-php/spandrel](https://github.com/spandrel-php/spandrel):
+
+```sh
+composer require --dev spandrel/spandrel
+vendor/bin/spandrel analyse
+```
+
+The rest of this README covers working on Spandrel's own source — building
+and testing this repo, not using Spandrel against your project. For that,
+see the [User Guide](docs/README.md).
+
 ## How Spandrel compares
 
 ### vs. Deptrac
