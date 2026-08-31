@@ -9,3 +9,5 @@
 /CONTRIBUTING.md export-ignore
 /SECURITY.md export-ignore
 /.gitattributes export-ignore
+/box.json export-ignore
+/scoper.inc.php export-ignore

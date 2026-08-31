@@ -3,6 +3,9 @@
 # php:8.5-cli-alpine — pinned by digest; bumped by Dependabot
 FROM php:8.5-cli-alpine@sha256:0554eb53778b5316f6b9a3447c9dfa3cf2141c0c02ff816c42cdc9aa240a34aa
 
+# git: box.json's git-version needs `git describe`/`git log` at compile time
+RUN apk add --no-cache git
+
 # Install build dependencies for pecl extensions, then clean up
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS linux-headers \
     && pecl install xdebug \

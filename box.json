@@ -1,0 +1,17 @@
+{
+    "$schema": "https://raw.githubusercontent.com/box-project/box/main/res/schema.json",
+    "main": "bin/spandrel.php",
+    "output": "spandrel.phar",
+    "banner": false,
+    "directories": [
+        "src"
+    ],
+    "files": [
+        "vendor/composer/installed.php"
+    ],
+    "force-autodiscovery": true,
+    "git-version": "Spandrel\\Spandrel\\Console\\Version::GIT_VERSION",
+    "compactors": [
+        "KevinGH\\Box\\Compactor\\PhpScoper"
+    ]
+}

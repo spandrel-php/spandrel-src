@@ -1,0 +1,67 @@
+name: Create tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Next version"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  create-tag:
+    name: Create tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Get previous tag
+        id: previoustag
+        # Reads tags from the local checkout above, no GitHub API calls —
+        # no token needed here.
+        uses: WyriHaximus/github-action-get-previous-tag@61819f33034117e6c686e6a31dba995a85afc9de # v2.0.0
+        with:
+          fallback: 0.0.0
+
+      - name: Get next version
+        id: semvers
+        uses: WyriHaximus/github-action-next-semvers@18aa9ed4152808ab99b88d71f5481e41f8d89930 # v1.2.1
+        with:
+          version: ${{ steps.previoustag.outputs.tag }}
+
+      - name: Create major tag
+        if: inputs.version == 'major'
+        uses: rickstaa/action-create-tag@a1c7777fcb2fee4f19b0f283ba888afa11678b72 # v1.7.2
+        with:
+          tag: ${{ steps.semvers.outputs.major }}
+          message: ${{ steps.semvers.outputs.major }}
+          # this action pushes via the GitHub API with its own token input,
+          # not a git push using the checkout credentials above — it defaults
+          # to the ephemeral GITHUB_TOKEN, whose tag pushes don't trigger
+          # other workflows (GitHub's loop-prevention rule), so release.yml
+          # would never fire without overriding it here
+          github_token: ${{ secrets.SPANDREL_BOT_TOKEN }}
+
+      - name: Create minor tag
+        if: inputs.version == 'minor'
+        uses: rickstaa/action-create-tag@a1c7777fcb2fee4f19b0f283ba888afa11678b72 # v1.7.2
+        with:
+          tag: ${{ steps.semvers.outputs.minor }}
+          message: ${{ steps.semvers.outputs.minor }}
+          github_token: ${{ secrets.SPANDREL_BOT_TOKEN }}
+
+      - name: Create patch tag
+        if: inputs.version == 'patch'
+        uses: rickstaa/action-create-tag@a1c7777fcb2fee4f19b0f283ba888afa11678b72 # v1.7.2
+        with:
+          tag: ${{ steps.semvers.outputs.patch }}
+          message: ${{ steps.semvers.outputs.patch }}
+          github_token: ${{ secrets.SPANDREL_BOT_TOKEN }}
