@@ -22,6 +22,9 @@ jobs:
           php-version: "8.5"
           coverage: none
 
+      - name: Composer audit
+        run: composer audit --locked
+
       - name: Cache Composer dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -81,14 +84,19 @@ jobs:
           coverage: none
 
       - name: Cache Composer dependencies
+        # Caches Composer's download cache, not the installed vendor/ tree —
+        # composer install still verifies dist checksums from composer.lock
+        # when unpacking a cache hit, whereas a restored vendor/ tree would
+        # be trusted as-is by version alone. No restore-keys fallback: a
+        # lock-file miss should mean a clean, checksum-verified install, not
+        # a stale tree from an unrelated lock file.
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: vendor
+          path: ~/.cache/composer/files
           key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction --no-scripts --no-plugins
 
       - name: Download box.phar
         run: |
