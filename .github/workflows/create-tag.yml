@@ -22,14 +22,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          # Left at the default (true), actions/checkout persists the
-          # default GITHUB_TOKEN's credentials as a git http.extraheader —
-          # which then silently overrides the PAT the create-tag steps below
-          # inject via `git remote set-url`, since an extraheader wins over
-          # credentials embedded in the remote URL. The push then
-          # authenticates as GITHUB_TOKEN (no contents: write here) instead
-          # of the PAT, and fails with "Write access to repository not
-          # granted" no matter how the PAT itself is scoped.
+          # Left at the default (true), actions/checkout would persist
+          # GITHUB_TOKEN as a git http.extraheader, which silently outranks
+          # the PAT the steps below inject via `git remote set-url` — the
+          # push would then use GITHUB_TOKEN regardless of how the PAT
+          # itself is scoped.
           persist-credentials: false
 
       - name: Get previous tag
@@ -52,11 +49,9 @@ jobs:
         with:
           tag: ${{ steps.semvers.outputs.major }}
           message: ${{ steps.semvers.outputs.major }}
-          # this action pushes via the GitHub API with its own token input,
-          # not a git push using the checkout credentials above — it defaults
-          # to the ephemeral GITHUB_TOKEN, whose tag pushes don't trigger
-          # other workflows (GitHub's loop-prevention rule), so release.yml
-          # would never fire without overriding it here
+          # Pushes via the GitHub API using this input, not the checkout
+          # credentials — defaults to GITHUB_TOKEN, whose tag pushes don't
+          # trigger other workflows, so release.yml would never fire.
           github_token: ${{ secrets.SPANDREL_BOT_TOKEN }}
 
       - name: Create minor tag

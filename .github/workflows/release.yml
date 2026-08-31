@@ -87,13 +87,10 @@ jobs:
           persist-credentials: false
 
       - name: Checkout spandrel-php/spandrel
-        # actions/checkout fetches an explicit ref (refs/heads/main) and
-        # fails outright if the repo has no commits yet — the state
-        # spandrel-php/spandrel starts in before the first release. A plain
-        # git clone tolerates that (unborn HEAD on main, ready for the first
-        # commit) instead of erroring, so use that here. The embedded
-        # credential in the remote URL is also what the auto-commit step
-        # below pushes with.
+        # git clone, not actions/checkout: tolerates an empty remote (no
+        # refs at all) instead of erroring on the explicit ref fetch. The
+        # embedded credential is also what the auto-commit step below
+        # pushes with.
         env:
           BOT_TOKEN: ${{ secrets.SPANDREL_BOT_TOKEN }}
         run: git clone "https://x-access-token:${BOT_TOKEN}@github.com/spandrel-php/spandrel.git" dist
@@ -108,11 +105,9 @@ jobs:
         run: chmod 755 dist/spandrel.phar
 
       - name: Sign PHAR
-        # --yes: dist/spandrel.phar.asc already exists here from the
-        # previous release (this is a fresh clone of the dist repo, not an
-        # empty one) — gpg refuses to overwrite an existing --output file
-        # under --batch otherwise, failing with "signing failed: File
-        # exists" rather than an obvious "file already exists" message.
+        # --yes: spandrel.phar.asc already exists (a tracked file from the
+        # previous release) — gpg refuses to overwrite an existing --output
+        # file under --batch otherwise.
         working-directory: dist
         env:
           GPG_ID: ${{ steps.import-gpg.outputs.fingerprint }}
@@ -234,12 +229,7 @@ jobs:
 
             ${{ steps.git-log.outputs.log }}
           tagging_message: ${{ github.ref_name }}
-          # The git clone above already leaves us on the right branch with
-          # the right remote — this action's own fetch+checkout is
-          # redundant, and specifically breaks on a from-scratch repo (an
-          # unqualified `git fetch` errors when the remote has no refs at
-          # all, and `git checkout --` with no branch name fails with "You
-          # are on a branch yet to be born" against an unborn HEAD). Both
-          # only matter before the dist repo's first-ever commit.
+          # The git clone above already leaves us on the right branch and
+          # remote — this action's own fetch+checkout is redundant.
           skip_fetch: true
           skip_checkout: true
