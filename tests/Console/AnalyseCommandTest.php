@@ -571,6 +571,27 @@ final class AnalyseCommandTest extends TestCase
         }
     }
 
+    public function testUnwritableReportTargetIsRejectedWithoutFallingBackToStdout(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/ViolatingApp';
+        $unwritableTarget = sys_get_temp_dir().'/spandrel-report-missing-dir-'.uniqid().'/out.json';
+
+        $tester = $this->tester();
+        $exitCode = $tester->execute([
+            'paths' => $fixtures.'/src',
+            '--ruleset' => $fixtures.'/architecture.md',
+            '--report' => ["json:{$unwritableTarget}"],
+        ]);
+
+        self::assertSame(Command::INVALID, $exitCode);
+        // SymfonyStyle word-wraps the error across lines, so match the path
+        // rather than the full sentence verbatim.
+        self::assertStringContainsString('Cannot open', $tester->getDisplay());
+        self::assertStringContainsString($unwritableTarget, $tester->getDisplay());
+        self::assertStringNotContainsString('"violations"', $tester->getDisplay());
+        self::assertFileDoesNotExist($unwritableTarget);
+    }
+
     public function testConfigSuppliesPathsAndRuleset(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';

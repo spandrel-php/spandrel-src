@@ -298,6 +298,20 @@ final class AnalyseCommand extends Command
             $writes[] = ['target' => $spec['output'], 'text' => $formatted, 'decorated' => $spec['format'] === 'console'];
         }
 
+        /** @var string[] $unwritableTargets */
+        $unwritableTargets = array_values(array_filter(
+            array_unique(array_column($writes, 'target')),
+            static fn (string $target): bool => $target !== '-' && !self::isWritableTarget($target),
+        ));
+
+        if ($unwritableTargets !== []) {
+            foreach ($unwritableTargets as $unwritableTarget) {
+                $io->error(sprintf('Cannot open "%s" for writing.', $unwritableTarget));
+            }
+
+            return Command::INVALID;
+        }
+
         foreach ($writes as $write) {
             $this->write($output, $write['target'], $write['text'], $write['decorated']);
         }
@@ -329,6 +343,19 @@ final class AnalyseCommand extends Command
         return false;
     }
 
+    private static function isWritableTarget(string $target): bool
+    {
+        $stream = @fopen($target, 'w');
+
+        if ($stream === false) {
+            return false;
+        }
+
+        fclose($stream);
+
+        return true;
+    }
+
     /**
      * Writes `$text` to `$target` ("-" for stdout). `$decorated` selects whether
      * `<tag>`-shaped sequences are interpreted as console markup or left
@@ -340,7 +367,7 @@ final class AnalyseCommand extends Command
         $targetOutput = $output;
 
         if ($target !== '-') {
-            $stream = fopen($target, 'w');
+            $stream = @fopen($target, 'w');
 
             if ($stream !== false) {
                 $targetOutput = new StreamOutput($stream, $output->getVerbosity());
