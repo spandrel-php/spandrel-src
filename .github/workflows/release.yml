@@ -153,7 +153,7 @@ jobs:
         run: |
           cat > dist/composer.json <<'JSON'
           {
-              "name": "spandrel-php/spandrel",
+              "name": "spandrel/spandrel",
               "description": "Spandrel is a static analysis tool for PHP applications, enforcing architectural rules over a codebase's dependency graph.",
               "license": "AGPL-3.0-or-later",
               "keywords": ["dev", "static analysis", "architecture"],
@@ -177,7 +177,7 @@ jobs:
           # Spandrel
 
           This repository holds Spandrel's compiled, release-ready \`spandrel.phar\` —
-          the artifact \`composer require spandrel-php/spandrel\` installs, or that you
+          the artifact \`composer require spandrel/spandrel\` installs, or that you
           can download and run directly. It is published automatically from
           [spandrel-php/spandrel-src](https://github.com/spandrel-php/spandrel-src),
           where Spandrel's source, issues and pull requests live.
@@ -185,7 +185,7 @@ jobs:
           ## Usage
 
           \`\`\`sh
-          composer require --dev spandrel-php/spandrel
+          composer require --dev spandrel/spandrel
           vendor/bin/spandrel analyse
           \`\`\`
 
