@@ -8,12 +8,13 @@ use PHPUnit\Framework\TestCase;
 use Spandrel\Spandrel\Graph\DependencyKind;
 use Spandrel\Spandrel\Reporting\SarifReporter;
 use Spandrel\Spandrel\RuleEngine\Violation;
+use Spandrel\Spandrel\Version\Version;
 
 /**
  * @phpstan-type SarifDocument array{
  *     version: string,
  *     runs: array<int, array{
- *         tool: array{driver: array{name: string, rules: array<int, array{id: string, shortDescription: array{text: string}}>}},
+ *         tool: array{driver: array{name: string, version: string, rules: array<int, array{id: string, shortDescription: array{text: string}}>}},
  *         results: array<int, array{
  *             ruleId: string,
  *             level: string,
@@ -32,6 +33,7 @@ final class SarifReporterTest extends TestCase
 
         self::assertSame('2.1.0', $decoded['version']);
         self::assertSame('Spandrel', $decoded['runs'][0]['tool']['driver']['name']);
+        self::assertSame(Version::current(), $decoded['runs'][0]['tool']['driver']['version']);
         self::assertSame([], $decoded['runs'][0]['tool']['driver']['rules']);
         self::assertSame([], $decoded['runs'][0]['results']);
     }

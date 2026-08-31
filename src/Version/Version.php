@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Spandrel\Spandrel\Console;
+namespace Spandrel\Spandrel\Version;
 
 final class Version
 {
@@ -15,7 +15,7 @@ final class Version
      * running from source (`php bin/spandrel.php`) rather than the
      * compiled PHAR.
      */
-    public const string GIT_VERSION = '@Spandrel\Spandrel\Console\Version::GIT_VERSION@';
+    public const string GIT_VERSION = '@Spandrel\Spandrel\Version\Version::GIT_VERSION@';
 
     public static function current(): string
     {

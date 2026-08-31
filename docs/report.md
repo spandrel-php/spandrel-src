@@ -136,8 +136,10 @@ pointing directly at the violating line, for example):
 }
 ```
 
-- `tool.driver.version` is currently the fixed string `"dev"` — there's
-  no release versioning wired up yet, not a per-build value.
+- `tool.driver.version` is `Spandrel\Spandrel\Version\Version::current()`
+  — the git tag/commit `box compile` baked into the running phar (see
+  [box.json](../box.json)), or the fixed string `"dev"` when running
+  from source (`php bin/spandrel.php`) rather than a released build.
 - `tool.driver.rules[]` is built from the **distinct rule-text strings
   actually present in the violations**, not from every rule bullet in
   the ruleset — a ruleset with a hundred rules but one kind of
