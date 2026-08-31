@@ -180,7 +180,8 @@ jobs:
           the artifact \`composer require spandrel/spandrel\` installs, or that you
           can download and run directly. It is published automatically from
           [spandrel-php/spandrel-src](https://github.com/spandrel-php/spandrel-src),
-          where Spandrel's source, issues and pull requests live.
+          where Spandrel's source, issues and pull requests live. See
+          [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
           ## Usage
 
@@ -219,8 +220,35 @@ jobs:
         run: |
           PREVIOUS_TAG="$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)"
           echo "log<<MESSAGE" >> "$GITHUB_OUTPUT"
-          git log "$PREVIOUS_TAG"..HEAD --reverse --pretty='https://github.com/spandrel-php/spandrel-src/commit/%H %s' >> "$GITHUB_OUTPUT"
+          git log "$PREVIOUS_TAG"..HEAD --reverse --pretty='- %s ([%h](https://github.com/spandrel-php/spandrel-src/commit/%H))' >> "$GITHUB_OUTPUT"
           echo "MESSAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Update CHANGELOG.md
+        # Same commit range as the commit message below, reformatted as a
+        # dated section prepended to the top of the file (newest first).
+        # Entries are one line per source commit — there's no separate
+        # curation step, so this is a log, not hand-written release notes.
+        working-directory: dist
+        env:
+          GIT_LOG: ${{ steps.git-log.outputs.log }}
+        run: |
+          NEW_ENTRY="$(printf '## %s - %s\n\n%s\n' "${{ github.ref_name }}" "$(date -u +%Y-%m-%d)" "$GIT_LOG")"
+          # Previous entries, i.e. everything after the "# Changelog" header
+          # and its blank line — empty on the very first release.
+          PREVIOUS_ENTRIES=""
+          if [ -f CHANGELOG.md ]; then
+            PREVIOUS_ENTRIES="$(tail -n +3 CHANGELOG.md)"
+          fi
+          {
+            echo "# Changelog"
+            echo
+            printf '%s\n' "$NEW_ENTRY"
+            if [ -n "$PREVIOUS_ENTRIES" ]; then
+              echo
+              printf '%s\n' "$PREVIOUS_ENTRIES"
+            fi
+          } > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
 
       - name: Commit and tag
         uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
