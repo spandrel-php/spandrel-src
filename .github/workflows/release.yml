@@ -265,3 +265,12 @@ jobs:
 
             ${{ steps.git-log.outputs.log }}
           tagging_message: ${{ github.ref_name }}
+          # The git clone above already leaves us on the right branch with
+          # the right remote — this action's own fetch+checkout is
+          # redundant, and specifically breaks on a from-scratch repo (an
+          # unqualified `git fetch` errors when the remote has no refs at
+          # all, and `git checkout --` with no branch name fails with "You
+          # are on a branch yet to be born" against an unborn HEAD). Both
+          # only matter before the dist repo's first-ever commit.
+          skip_fetch: true
+          skip_checkout: true
