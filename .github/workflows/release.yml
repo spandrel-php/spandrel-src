@@ -123,6 +123,18 @@ jobs:
           GPG_ID: ${{ steps.import-gpg.outputs.fingerprint }}
         run: gpg --armor --export "$GPG_ID" > dist/spandrel-bot.gpg.asc
 
+      - name: Publish public key to keys.openpgp.org
+        # Supplementary discoverability, not the primary verification path
+        # (that's the bundled spandrel-bot.gpg.asc, checked against the
+        # fingerprint printed above) — a keyserver hiccup shouldn't fail a
+        # release. keys.openpgp.org only publishes non-identity data on a
+        # bare send-keys; the email UID stays unsearchable until someone
+        # completes its email-verification flow by hand, which CI can't do.
+        continue-on-error: true
+        env:
+          GPG_ID: ${{ steps.import-gpg.outputs.fingerprint }}
+        run: gpg --keyserver hkps://keys.openpgp.org --send-keys "$GPG_ID"
+
       - name: Write wrapper script
         run: |
           cat > dist/spandrel <<'PHP'
@@ -190,6 +202,14 @@ jobs:
           \`\`\`sh
           gpg --import spandrel-bot.gpg.asc
           gpg --verify spandrel.phar.asc spandrel.phar
+          \`\`\`
+
+          The same key is also published on
+          [keys.openpgp.org](https://keys.openpgp.org), fetchable by
+          fingerprint without trusting this repo for the key itself:
+
+          \`\`\`sh
+          gpg --keyserver hkps://keys.openpgp.org --recv-keys ${{ steps.import-gpg.outputs.fingerprint }}
           \`\`\`
           MD
 
