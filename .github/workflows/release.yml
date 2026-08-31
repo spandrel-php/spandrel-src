@@ -183,11 +183,18 @@ jobs:
       - name: Get git log
         id: git-log
         working-directory: spandrel-src
+        # Commit subjects are contributor-controlled text landing in
+        # $GITHUB_OUTPUT via a heredoc — a random delimiter (rather than a
+        # fixed, guessable one) is the pattern GitHub's own docs recommend
+        # for that, so an output line can never prematurely close the block.
         run: |
           PREVIOUS_TAG="$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)"
-          echo "log<<MESSAGE" >> "$GITHUB_OUTPUT"
-          git log "$PREVIOUS_TAG"..HEAD --reverse --pretty='- %s ([%h](https://github.com/spandrel-php/spandrel-src/commit/%H))' >> "$GITHUB_OUTPUT"
-          echo "MESSAGE" >> "$GITHUB_OUTPUT"
+          DELIM="log_$(openssl rand -hex 16)"
+          {
+            echo "log<<$DELIM"
+            git log "$PREVIOUS_TAG"..HEAD --reverse --pretty='- %s ([%h](https://github.com/spandrel-php/spandrel-src/commit/%H))'
+            echo "$DELIM"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Update CHANGELOG.md
         # Same commit range as the commit message below, reformatted as a
@@ -197,8 +204,9 @@ jobs:
         working-directory: dist
         env:
           GIT_LOG: ${{ steps.git-log.outputs.log }}
+          TAG: ${{ github.ref_name }}
         run: |
-          NEW_ENTRY="$(printf '## %s - %s\n\n%s\n' "${{ github.ref_name }}" "$(date -u +%Y-%m-%d)" "$GIT_LOG")"
+          NEW_ENTRY="$(printf '## %s - %s\n\n%s\n' "$TAG" "$(date -u +%Y-%m-%d)" "$GIT_LOG")"
           # Previous entries, i.e. everything after the "# Changelog" header
           # and its blank line — empty on the very first release.
           PREVIOUS_ENTRIES=""
