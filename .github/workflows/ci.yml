@@ -42,12 +42,14 @@ jobs:
         run: vendor/bin/phpstan analyse --memory-limit=512M
 
       - name: Spandrel
-        # Console output lands in the job log directly, so a violation is
-        # visible right here without waiting on SARIF upload/code-scanning
-        # annotations or downloading the artifact — the SARIF file is still
-        # produced in the same run for the step below.
+        # Three reports from one run: console output lands in the job log
+        # directly, so a violation is visible right here without waiting on
+        # SARIF upload/code-scanning annotations or downloading the artifact;
+        # github emits workflow commands that annotate the offending lines on
+        # the PR diff without code scanning being involved at all; the SARIF
+        # file is still produced for the upload step below.
         if: always()
-        run: php bin/spandrel.php analyse --report=console --report=sarif:spandrel.sarif
+        run: php bin/spandrel.php analyse --report=console --report=github --report=sarif:spandrel.sarif
 
       - name: Upload SARIF
         # Code scanning uploads are free on public repos but need GitHub

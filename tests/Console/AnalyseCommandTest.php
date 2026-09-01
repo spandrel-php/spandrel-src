@@ -354,6 +354,25 @@ final class AnalyseCommandTest extends TestCase
         self::assertCount(1, $decoded['runs'][0]['results']);
     }
 
+    public function testGithubFormatAnnotatesTheViolationAtARepoRelativePath(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/ViolatingApp';
+
+        $tester = $this->tester();
+        $exitCode = $tester->execute([
+            'paths' => $fixtures.'/src',
+            '--ruleset' => $fixtures.'/architecture.md',
+            '--report' => ['github'],
+        ]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertStringContainsString(
+            '::error file=tests/Fixtures/ViolatingApp/src/Domain/Baz.php,line=9,col=1,endLine=11,endColumn=1,',
+            $tester->getDisplay(),
+        );
+        self::assertStringContainsString('title=Spandrel%3A `Domain` must not depend on `Infrastructure`::', $tester->getDisplay());
+    }
+
     public function testMermaidFormatRendersLayersAndTheViolatingEdge(): void
     {
         $fixtures = __DIR__.'/../Fixtures/ViolatingApp';
