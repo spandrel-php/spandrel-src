@@ -215,7 +215,7 @@ equivalent CLI flags always override what's declared here:
 
 | Command | Purpose |
 |---|---|
-| `analyse` (alias `analyze`) | Run the pipeline, report violations. `--report=FORMAT[:OUTPUT]` (console/json/sarif/mermaid), `--baseline`/`--generate-baseline`, `--strict`. |
+| `analyse` (alias `analyze`) | Run the pipeline, report violations. `--report=FORMAT[:OUTPUT]` (console/json/sarif/github/mermaid), `--baseline`/`--generate-baseline`, `--strict`. |
 | `init` | Scaffold a starter `architecture.md` + `spandrel.yaml`. |
 | `lint` | Validate the ruleset itself (grammar, layer-resolution sanity) without evaluating violations. `--strict-layers` catches an unused/stale layer. |
 | `debug:layers` | Show every declared layer, its pattern(s), and how many elements matched — the first stop when a rule "isn't catching anything." |

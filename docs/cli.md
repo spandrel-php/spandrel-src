@@ -48,7 +48,7 @@ php bin/spandrel.php analyse [paths] [options]
 |---|---|
 | `--config=<path>` | Path to the tool config file, instead of auto-discovered `spandrel.yaml`. |
 | `--ruleset=<path>` | Path to a ruleset file. Repeatable to merge several; defaults to `ruleset` in `spandrel.yaml`, then `architecture.md`. |
-| `--report=FORMAT[:OUTPUT]` | `FORMAT` is `console` (default), `json`, `sarif`, or `mermaid`; `OUTPUT` is a file path, or `-` (default) for stdout. Repeatable to emit more than one report from a single run, e.g. `--report=console --report=sarif:report.sarif`. Omit entirely for `console` to stdout. |
+| `--report=FORMAT[:OUTPUT]` | `FORMAT` is `console` (default), `json`, `sarif`, `github`, or `mermaid`; `OUTPUT` is a file path, or `-` (default) for stdout. Repeatable to emit more than one report from a single run, e.g. `--report=console --report=sarif:report.sarif`. Omit entirely for `console` to stdout. |
 | `--diagram-scope=full\|violations` | Mermaid only. `full` (default) draws every observed layer pair; `violations` draws only pairs containing a violation. |
 | `--diagram-layer=<Name>` | Mermaid only. Scopes the diagram to one layer (leaf or group) and its immediate neighbors, instead of the whole graph. Exit `2` if the name isn't a declared layer. |
 | `--diagram-force` | Mermaid only. Renders past the 40-node/60-edge readability limit instead of refusing with `MermaidDiagramTooLargeException`. |

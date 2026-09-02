@@ -32,9 +32,10 @@ LLM agent parses and edits, with no separate schema to hold in mind.
 `may only depend on`) that can be scoped to a specific dependency kind
 (`must not extend`, `must not call`) or to a type hierarchy (`subtypes
 of X must not depend on Y`), rather than a single per-layer allow-list.
-- **Output** — SARIF (renders inline in GitHub's code-scanning UI) and
-Mermaid (renders directly in GitHub-flavored Markdown) as first-class
-formatters alongside console and JSON.
+- **Output** — SARIF (renders inline in GitHub's code-scanning UI),
+GitHub workflow commands (annotate the PR diff with no SARIF upload at
+all), and Mermaid (renders directly in GitHub-flavored Markdown) as
+first-class formatters alongside console and JSON.
 - Targets PHP 8.5 only, with no goal of supporting older versions.
 
 ### vs. PHPStan

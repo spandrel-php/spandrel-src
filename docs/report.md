@@ -1,7 +1,7 @@
 # Report Formats
 
-`analyse` reports violations in one of four formats — `console`
-(default), `json`, `sarif`, or `mermaid` — selected with
+`analyse` reports violations in one of five formats — `console`
+(default), `json`, `sarif`, `github`, or `mermaid` — selected with
 `--report=FORMAT[:OUTPUT]`, repeatable to emit several in one run. This
 page covers what each format actually contains; see
 [docs/cli.md](cli.md#analyse-alias-analyze) for the `--report`/
@@ -20,9 +20,12 @@ GraphReporter {
 }
 ```
 
-Console, JSON, and SARIF report on individual violations alone — they
-never read the Code Graph or the Ruleset, only strings already baked
-into each `Violation` — so they implement the narrower `Reporter`.
+Console, JSON, SARIF, and GitHub report on individual violations alone
+— they never read the Code Graph or the Ruleset, only strings already
+baked into each `Violation` — so they implement the narrower
+`Reporter`. (GitHub additionally takes the analysed source paths as
+constructor state, to rebuild repo-root-relative paths for its
+annotations; nothing beyond `$violations` reaches `format()`.)
 Mermaid needs the actual layers (to know the graph's nodes and
 groupings) and every observed dependency, not just the violating ones,
 so it implements `GraphReporter` instead. The two are sibling
@@ -154,6 +157,47 @@ pointing directly at the violating line, for example):
   `startLine` is itself valid SARIF.
 - `artifactLocation.uri` always uses `/`, even on a backslash
   filesystem, so the report is portable across CI runners.
+
+## GitHub
+
+[Workflow commands](https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-error-message),
+one `::error` per violation, so a run inside GitHub Actions annotates
+the offending lines in the pull request's diff — no SARIF upload, no
+GitHub Advanced Security, no `security-events: write` involved:
+
+```
+$ spandrel analyse src --report=github
+::error file=src/Domain/Foo.php,line=4,col=31,endLine=4,endColumn=35,title=Spandrel%3A `Domain` must not depend on `Infrastructure`::App\Domain\Foo (Domain) must not depend on App\Infrastructure\Db (Infrastructure) via param-type
+```
+
+- **`file=` is repo-root-relative, not source-relative.** Every other
+  format reports `Violation::$file` as it stands — relative to the
+  source path it was found under, so `Domain/Foo.php` for `analyse
+  src`. GitHub resolves an annotation's path against the repository
+  root and silently drops any annotation whose path doesn't exist
+  there, so this format puts the source path back in front (the first
+  one that actually contains the file, when several were analysed).
+  The corollary: **run `analyse` from the repository root**, the
+  normal shape of a workflow step. A path that can't be resolved is
+  emitted unchanged rather than guessed at.
+- `col`/`endLine`/`endColumn` are included whenever the violation
+  carries them (always true for a real run) and omitted otherwise.
+- `title` is the matched rule's own text, prefixed with `Spandrel:` —
+  the annotation heading is the one place a check run mixing several
+  tools' annotations can say which tool spoke, and it makes the diff
+  annotation read like `console -v` output.
+- `%`, CR and LF in the message, plus `,` and `:` in property values,
+  are percent-escaped as the workflow-command syntax requires.
+- **No violations produces no output at all** — the command *is* the
+  message here, so there's nothing to say when there's nothing to
+  annotate. Pair it with `console` (`--report=console
+  --report=github`) to keep a human-readable summary in the job log.
+
+GitHub caps annotations at 10 errors per step and 50 annotations per
+job across all steps ([Actions
+limits](https://docs.github.com/en/actions/reference/limits)); past
+that the step still fails on the full violation count, but only the
+first annotations are drawn on the diff.
 
 ## Mermaid
 

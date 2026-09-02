@@ -11,6 +11,7 @@ use Spandrel\Spandrel\Config\ConfigLoader;
 use Spandrel\Spandrel\Config\ConfigParseException;
 use Spandrel\Spandrel\Graph\CodeGraph;
 use Spandrel\Spandrel\Reporting\ConsoleReporter;
+use Spandrel\Spandrel\Reporting\GithubReporter;
 use Spandrel\Spandrel\Reporting\GraphReporter;
 use Spandrel\Spandrel\Reporting\JsonReporter;
 use Spandrel\Spandrel\Reporting\MermaidDiagramTooLargeException;
@@ -44,7 +45,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'analyse', aliases: ['analyze'], description: 'Run the pipeline and report violations')]
 final class AnalyseCommand extends Command
 {
-    private const SUPPORTED_FORMATS = ['console', 'json', 'sarif', 'mermaid'];
+    private const SUPPORTED_FORMATS = ['console', 'json', 'sarif', 'github', 'mermaid'];
     private const SUPPORTED_DIAGRAM_SCOPES = ['full', 'violations'];
 
     public function __construct(
@@ -62,7 +63,7 @@ final class AnalyseCommand extends Command
             ->addArgument('paths', InputArgument::OPTIONAL, 'Source directory to analyse; defaults to source.paths in spandrel.yaml')
             ->addOption('config', null, InputOption::VALUE_REQUIRED, 'Path to the tool config file', null)
             ->addOption('ruleset', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Path to a ruleset file; repeatable to merge several', [])
-            ->addOption('report', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'FORMAT or FORMAT:OUTPUT (e.g. sarif:report.sarif); repeatable to emit several reports in one run. FORMAT is console (default), json, sarif, or mermaid; OUTPUT defaults to "-" for stdout', [])
+            ->addOption('report', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'FORMAT or FORMAT:OUTPUT (e.g. sarif:report.sarif); repeatable to emit several reports in one run. FORMAT is console (default), json, sarif, github, or mermaid; OUTPUT defaults to "-" for stdout', [])
             ->addOption('diagram-scope', null, InputOption::VALUE_REQUIRED, 'Mermaid only: full (default) or violations', 'full')
             ->addOption('diagram-layer', null, InputOption::VALUE_REQUIRED, 'Mermaid only: scope the diagram to one layer and its immediate neighbors', null)
             ->addOption('diagram-force', null, InputOption::VALUE_NONE, 'Mermaid only: render the full diagram even if it exceeds the size that stays readable')
@@ -280,7 +281,7 @@ final class AnalyseCommand extends Command
         $graph = null;
 
         foreach ($reportSpecs as $spec) {
-            $reporterInstance = $this->reporter($spec['format'], $output->isVerbose(), $diagramScope, $diagramLayer, $diagramForce, $baselinedCount);
+            $reporterInstance = $this->reporter($spec['format'], $output->isVerbose(), $diagramScope, $diagramLayer, $diagramForce, $baselinedCount, $sourcePaths);
 
             try {
                 if ($reporterInstance instanceof GraphReporter) {
@@ -319,11 +320,15 @@ final class AnalyseCommand extends Command
         return $violations === [] ? Command::SUCCESS : Command::FAILURE;
     }
 
-    private function reporter(string $format, bool $verbose, string $diagramScope, ?string $diagramLayer, bool $diagramForce, int $baselinedCount): Reporter|GraphReporter
+    /**
+     * @param string[] $sourcePaths
+     */
+    private function reporter(string $format, bool $verbose, string $diagramScope, ?string $diagramLayer, bool $diagramForce, int $baselinedCount, array $sourcePaths): Reporter|GraphReporter
     {
         return match ($format) {
             'json' => new JsonReporter(),
             'sarif' => new SarifReporter(),
+            'github' => new GithubReporter($sourcePaths),
             'mermaid' => new MermaidReporter($diagramScope === 'violations', $diagramLayer, $diagramForce),
             default => new ConsoleReporter($verbose, $baselinedCount),
         };
