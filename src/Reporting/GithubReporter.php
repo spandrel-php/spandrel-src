@@ -8,30 +8,18 @@ use Spandrel\Spandrel\RuleEngine\Violation;
 
 /**
  * GitHub Actions workflow commands (`::error file=...,line=...::message`),
- * one per violation, so a run inside a workflow annotates the offending
- * lines in the pull request's diff without a SARIF upload or GitHub
- * Advanced Security in the picture.
+ * one per violation, annotating the pull request's diff without a SARIF
+ * upload — see docs/report.md for the format's own contract.
  *
- * Unlike the other `Reporter`s this one can't report on `$violations`
- * alone: `Violation::$file` is relative to the source path it was found
- * under (`Domain/Foo.php` for `analyse src`), while GitHub resolves an
- * annotation's `file=` against the repository root and silently drops any
- * annotation whose path doesn't exist there. `$sourcePaths` is the same
- * list `analyse` walked, so prefixing the first one that actually
- * contains the file recovers the repo-root-relative path — which also
- * means annotations land only when `analyse` runs from the repository
- * root, the normal shape of a workflow step.
- *
- * No violations means no output at all: a workflow command is the whole
- * message here, so there's nothing to say when there's nothing to
- * annotate.
+ * Unlike the other `Reporter`s this one can't work from `$violations`
+ * alone: GitHub resolves an annotation's `file=` against the repository
+ * root, while `Violation::$file` is relative to the source path it was
+ * found under, hence `$sourcePaths` as constructor state.
  */
 final class GithubReporter implements Reporter
 {
     /**
-     * @param string[] $sourcePaths the paths `analyse` walked, used to turn
-     *                              each violation's source-relative file back
-     *                              into a repo-root-relative one
+     * @param string[] $sourcePaths the paths `analyse` walked
      */
     public function __construct(private readonly array $sourcePaths = [])
     {
@@ -74,9 +62,8 @@ final class GithubReporter implements Reporter
             $properties['endColumn'] = (string) $violation->endColumn;
         }
 
-        // The rule text, not just "Spandrel" — the annotation's heading is
-        // the one place a mixed-tool check run can say which tool spoke and
-        // which rule was broken, the same thing `console -v` prints.
+        // The rule text, not just "Spandrel": the heading is the one place a
+        // mixed-tool check run can say which tool spoke and which rule broke.
         $properties['title'] = 'Spandrel: '.$violation->rule;
 
         $formatted = [];
@@ -89,11 +76,9 @@ final class GithubReporter implements Reporter
     }
 
     /**
-     * `$file` prefixed with whichever source path actually holds it, then
-     * made relative to the working directory so the result is repo-root-
-     * relative (and `..`-free) whatever shape the source path had. Falls
-     * back to `$file` unchanged when nothing matches — a wrong-looking
-     * annotation is more useful than a silently dropped one.
+     * `$file` prefixed with whichever source path holds it, then made
+     * relative to the working directory. Unmatched files are emitted
+     * unchanged — a wrong-looking annotation beats a silently dropped one.
      */
     private function annotationPath(string $file): string
     {
@@ -123,9 +108,6 @@ final class GithubReporter implements Reporter
         return $file;
     }
 
-    /**
-     * Workflow-command message text: only `%`, CR and LF are special.
-     */
     private static function escapeData(string $value): string
     {
         return strtr($value, ['%' => '%25', "\r" => '%0D', "\n" => '%0A']);
