@@ -247,11 +247,9 @@ plus one **group** layer per distinct value on *each* axis, for free:
 Given `Billing\Domain`, `Billing\Infrastructure`, and
 `Shipping\Domain` namespaces (plus two rules using each axis — `Domain`
 must not depend on `Infrastructure`, `Billing` must not depend on
-`Shipping` — and one `may depend on anything` per leaf so `lint
---strict-layers` doesn't flag them as unused), this derives three leaf
-layers plus four ordinary group layers — one per module, one per
-sub-layer. Leaf and group names come out in Code Graph discovery
-order, not alphabetically:
+`Shipping`), this derives three leaf layers plus four ordinary group
+layers — one per module, one per sub-layer. Leaf and group names come
+out in Code Graph discovery order, not alphabetically:
 
 ```
 $ php bin/spandrel.php debug:ruleset src
@@ -267,14 +265,11 @@ $ php bin/spandrel.php debug:ruleset src
 
 ## Rules
 
-- `Shipping_Domain` may depend on anything
-- `Billing_Domain` may depend on anything
-- `Billing_Infrastructure` may depend on anything
 - `Billing` must not depend on `Shipping`
 - `Domain` must not depend on `Infrastructure`
 ```
 
-The last two rules are what target each axis with zero new grammar —
+Both rules target an axis with zero new grammar —
 `Domain` and `Infrastructure` are ordinary auto-derived group layers,
 matched exactly like a hand-written `groups` bullet would be.
 

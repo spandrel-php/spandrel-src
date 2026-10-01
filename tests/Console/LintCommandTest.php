@@ -294,6 +294,20 @@ final class LintCommandTest extends TestCase
         self::assertStringContainsString('IO', $tester->getDisplay());
     }
 
+    public function testStrictLayersCountsLeavesCoveredOnlyThroughGroupsAsUsed(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/DemoApp';
+
+        $tester = $this->tester();
+        $exitCode = $tester->execute([
+            '--ruleset' => $fixtures.'/architecture-group-coverage.md',
+            '--strict-layers' => true,
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStringNotContainsString('not used in any rule', $tester->getDisplay());
+    }
+
     public function testStrictLayersSucceedsWhenEveryLayerIsCovered(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';

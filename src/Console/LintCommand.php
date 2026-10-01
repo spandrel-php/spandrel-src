@@ -8,7 +8,6 @@ use Spandrel\Spandrel\Cache\Cache;
 use Spandrel\Spandrel\Config\ConfigLoader;
 use Spandrel\Spandrel\Config\ConfigParseException;
 use Spandrel\Spandrel\Ruleset\AmbiguousLayerMatchException;
-use Spandrel\Spandrel\Ruleset\Layer;
 use Spandrel\Spandrel\Ruleset\LayerResolver;
 use Spandrel\Spandrel\Ruleset\RulesetParseException;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -24,10 +23,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  *
  * Always checked: the ruleset parses (grammar, unique layer names, no
  * conflicting rule mode per subject), and — under `--strict-layers` —
- * that every declared layer either appears in some rule or is explicitly
- * declared `may depend on anything`. `--strict-layers` can also be turned
- * on by the ruleset itself (`## Meta`'s "Every layer must be used in a
- * rule."); `--no-strict-layers` forces it off regardless.
+ * that every declared layer appears in some rule or is explicitly declared
+ * `may depend on anything`, directly or through a group containing it.
+ * `--strict-layers` can also be turned on by the ruleset itself (`## Meta`'s
+ * "Every layer must be used in a rule."); `--no-strict-layers` forces it
+ * off regardless.
  *
  * Checked only when `paths` is given, since these need a real Code Graph:
  * no element matches more than one leaf layer (failure), and no declared,
@@ -105,24 +105,7 @@ final class LintCommand extends Command
         $strictLayers = $noStrictLayers ? false : ($strictLayersOption || $ruleset->meta->strictLayers);
 
         if ($strictLayers) {
-            $usedNames = [];
-
-            foreach ($ruleset->rules as $rule) {
-                if (is_string($rule->subject)) {
-                    $usedNames[$rule->subject] = true;
-                }
-
-                if (is_string($rule->object)) {
-                    $usedNames[$rule->object] = true;
-                }
-            }
-
-            $unconstrained = array_flip($ruleset->unconstrainedLayers);
-
-            $staleLayers = array_filter(
-                $ruleset->layers,
-                static fn (Layer $layer): bool => !isset($usedNames[$layer->name]) && !isset($unconstrained[$layer->name]),
-            );
+            $staleLayers = $ruleset->unusedLayers();
 
             if ($staleLayers !== []) {
                 foreach ($staleLayers as $layer) {

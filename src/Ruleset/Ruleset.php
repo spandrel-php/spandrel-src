@@ -27,4 +27,42 @@ final class Ruleset
         public readonly RulesetMeta $meta = new RulesetMeta(),
     ) {
     }
+
+    /**
+     * Layers no rule constrains: neither named in a rule nor declared `may depend
+     * on anything`, directly or through any group containing them.
+     *
+     * @return Layer[]
+     */
+    public function unusedLayers(): array
+    {
+        $used = [];
+
+        foreach ($this->rules as $rule) {
+            if (is_string($rule->subject)) {
+                $used[$rule->subject] = true;
+            }
+
+            if (is_string($rule->object)) {
+                $used[$rule->object] = true;
+            }
+        }
+
+        foreach ($this->unconstrainedLayers as $name) {
+            $used[$name] = true;
+        }
+
+        $pending = array_filter($this->layers, static fn (Layer $layer): bool => isset($used[$layer->name]));
+
+        while ($pending !== []) {
+            foreach (array_pop($pending)->members as $member) {
+                if (!isset($used[$member->name])) {
+                    $used[$member->name] = true;
+                    $pending[] = $member;
+                }
+            }
+        }
+
+        return array_values(array_filter($this->layers, static fn (Layer $layer): bool => !isset($used[$layer->name])));
+    }
 }

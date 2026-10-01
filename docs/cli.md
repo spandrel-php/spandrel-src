@@ -124,7 +124,7 @@ php bin/spandrel.php lint [paths] [options]
 | `--ruleset=<path>` | Same as `analyse`. |
 | `--cache-dir=<path>` | Same as `analyse`. |
 | `--no-cache` | Same as `analyse`. |
-| `--strict-layers` | Fail if any declared layer is neither a rule subject nor explicitly declared `may depend on anything`. Also turned on by `## Meta`'s `Every layer must be used in a rule.`. |
+| `--strict-layers` | Fail if any declared layer is neither used in a rule nor declared `may depend on anything`, directly or through a group containing it. Also turned on by `## Meta`'s `Every layer must be used in a rule.`. |
 | `--no-strict-layers` | Force strict-layers mode off for this run, even if the ruleset declares it in `## Meta`. |
 
 Always checked, with no source needed: the ruleset parses, layer names
