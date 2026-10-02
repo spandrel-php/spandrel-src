@@ -78,7 +78,7 @@ flowchart LR
         Parser
         RuleEngine
     end
-    SymfonyConsole
+    SymfonyConsole[[SymfonyConsole]]
 
     Baseline -->|"2"| RuleEngine
     Cache -->|"2"| Graph
@@ -91,10 +91,11 @@ flowchart LR
     Console -->|"9"| Reporting
     Console -->|"1"| RuleEngine
     Console -->|"14"| Ruleset
+    Console -->|"32"| SymfonyConsole
     Parser -->|"22"| Graph
     Reporting -->|"3"| Graph
     Reporting -->|"8"| RuleEngine
-    Reporting -->|"7"| Ruleset
+    Reporting -->|"11"| Ruleset
     Reporting -->|"1"| Version
     RuleEngine -->|"15"| Graph
     RuleEngine -->|"35"| Ruleset
