@@ -324,28 +324,22 @@ final class RulesetParser
         foreach ($elements as $element) {
             $fqcnSegments = explode('\\', ltrim($element->fqcn, '\\'));
 
-            if (count($fqcnSegments) <= $lastCaptureIndex) {
+            // Captures take namespace segments only, never the class name itself.
+            if (count($fqcnSegments) <= $lastCaptureIndex + 1) {
                 continue;
             }
 
             $captured = [];
-            $prefixMatches = true;
+            $substituted = $templateSegments;
 
-            for ($i = 0; $i <= $lastCaptureIndex; $i++) {
-                if (in_array($i, $captureIndexes, true)) {
-                    $captured[] = $fqcnSegments[$i];
-
-                    continue;
-                }
-
-                if ($templateSegments[$i] !== '*' && $templateSegments[$i] !== $fqcnSegments[$i]) {
-                    $prefixMatches = false;
-
-                    break;
-                }
+            foreach ($captureIndexes as $idx) {
+                $captured[] = $fqcnSegments[$idx];
+                $substituted[$idx] = $fqcnSegments[$idx];
             }
 
-            if ($prefixMatches) {
+            // The whole template, not just the part up to the last capture, so
+            // literal segments after it (`App\{Module}\Domain\**`) count too.
+            if (PatternMatcher::matches(implode('\\', $substituted), $element->fqcn)) {
                 $combosByKey[implode("\0", $captured)] = $captured;
             }
         }

@@ -226,10 +226,12 @@ them at once:
 `{Name}` occupies exactly one namespace segment (like a single `*`)
 but also captures that segment's text as a layer name. For every
 distinct value the Code Graph finds at that position, Spandrel creates
-a layer named after the captured text. Explicit and templated bullets
-can be mixed freely in the same `## Layers` section; a derived name
-colliding with another layer's name is the same load error as any
-other duplicate.
+a layer named after the captured text. Only elements matching the
+whole template count, and a class name is never captured:
+`App\{Module}\**` derives nothing from `App\Kernel`, so an explicit
+layer can claim it. Explicit and templated bullets can be mixed freely
+in the same `## Layers` section; a derived name colliding with another
+layer's name is the same load error as any other duplicate.
 
 The segments *before* the last `{Name}` can't be `**` — same ambiguity
 a single capture already avoids (which split the capture belongs to).

@@ -1123,6 +1123,69 @@ final class RulesetParserTest extends TestCase
         self::assertSame(['App\Infrastructure\**'], $ruleset->layers[1]->patterns);
     }
 
+    public function testPlaceholderDoesNotCaptureAClassName(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+            MARKDOWN, $this->elements(
+            'App\Kernel',
+            'App\Domain\User',
+        ));
+
+        self::assertSame(['Domain'], array_map(static fn (Layer $layer): string => $layer->name, $ruleset->layers));
+    }
+
+    public function testTwoCapturePlaceholderDoesNotCaptureAClassName(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+            MARKDOWN, $this->elements(
+            'App\Web\HealthController',
+            'App\Billing\Domain\Invoice',
+        ));
+
+        self::assertSame(
+            ['Billing_Domain', 'Billing', 'Domain'],
+            array_map(static fn (Layer $layer): string => $layer->name, $ruleset->layers),
+        );
+    }
+
+    public function testPlaceholderCoexistsWithAnExplicitLayerForAClassOnlyNamespace(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+            - **Web**: `App\Web\**`
+            MARKDOWN, $this->elements(
+            'App\Web\HealthController',
+            'App\Billing\Domain\Invoice',
+        ));
+
+        self::assertSame(
+            ['Billing_Domain', 'Billing', 'Domain', 'Web'],
+            array_map(static fn (Layer $layer): string => $layer->name, $ruleset->layers),
+        );
+    }
+
+    public function testPlaceholderOnlyDerivesFromElementsMatchingSegmentsAfterTheCapture(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\Domain\**`
+            MARKDOWN, $this->elements(
+            'App\Billing\Infrastructure\InvoiceRepository',
+            'App\Shipping\Domain\Parcel',
+        ));
+
+        self::assertSame(['Shipping'], array_map(static fn (Layer $layer): string => $layer->name, $ruleset->layers));
+    }
+
     public function testPlaceholderColliesWithAnExplicitLayerThrows(): void
     {
         $this->expectException(RulesetParseException::class);
