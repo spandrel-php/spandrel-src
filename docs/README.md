@@ -207,17 +207,17 @@ equivalent CLI flags always override what's declared here:
 
 | Sentence | Equivalent to |
 |---|---|
-| `Any class not in a layer violates rules.` | `analyse --strict` (element-coverage half) |
-| `A file that fails to parse violates rules.` | `analyse --strict` (parse-error half) |
-| `Every layer must be used in a rule.` | `lint --strict-layers` |
+| `Any class not in a layer violates rules.` | `analyse --fail-on-unmatched-elements` |
+| `A file that fails to parse violates rules.` | `analyse --fail-on-parse-errors` |
+| `Every layer must be used in a rule.` | `lint --fail-on-unused-layers` |
 
 ## CLI commands
 
 | Command | Purpose |
 |---|---|
-| `analyse` (alias `analyze`) | Run the pipeline, report violations. `--report=FORMAT[:OUTPUT]` (console/json/sarif/github/mermaid), `--baseline`/`--generate-baseline`, `--strict`. |
+| `analyse` (alias `analyze`) | Run the pipeline, report violations. `--report=FORMAT[:OUTPUT]` (console/json/sarif/github/mermaid), `--baseline`/`--generate-baseline`, `--fail-on-unmatched-elements`, `--fail-on-parse-errors`. |
 | `init` | Scaffold a starter `architecture.md` + `spandrel.yaml`. |
-| `lint` | Validate the ruleset itself (grammar, layer-resolution sanity) without evaluating violations. `--strict-layers` catches an unused/stale layer. |
+| `lint` | Validate the ruleset itself (grammar, layer-resolution sanity) without evaluating violations. `--fail-on-unused-layers` catches a layer no rule constrains. |
 | `debug:layers` | Show every declared layer, its pattern(s), and how many elements matched — the first stop when a rule "isn't catching anything." |
 | `debug:ruleset` | Print the ruleset with every placeholder/group/list/nullary-predicate expanded to its explicit equivalent. |
 | `cache:clear` | Empty the extraction cache. |

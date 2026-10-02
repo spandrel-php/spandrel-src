@@ -697,7 +697,7 @@ final class AnalyseCommandTest extends TestCase
         self::assertStringContainsString('already declared', $tester->getDisplay());
     }
 
-    public function testWithoutStrictABrokenFileIsSkippedSilentlyAndTheRunStillSucceeds(): void
+    public function testWithoutFailOnParseErrorsABrokenFileIsSkippedSilentlyAndTheRunStillSucceeds(): void
     {
         $fixtures = __DIR__.'/../Fixtures/BrokenApp';
 
@@ -711,7 +711,7 @@ final class AnalyseCommandTest extends TestCase
         self::assertStringContainsString('No violations found', $tester->getDisplay());
     }
 
-    public function testStrictFailsOnAParseErrorAndNamesTheBrokenFile(): void
+    public function testFailOnParseErrorsFailsOnAParseErrorAndNamesTheBrokenFile(): void
     {
         $fixtures = __DIR__.'/../Fixtures/BrokenApp';
 
@@ -719,14 +719,14 @@ final class AnalyseCommandTest extends TestCase
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
             '--ruleset' => $fixtures.'/architecture.md',
-            '--strict' => true,
+            '--fail-on-parse-errors' => true,
         ]);
 
         self::assertSame(Command::INVALID, $exitCode);
         self::assertStringContainsString('Broken.php', $tester->getDisplay());
     }
 
-    public function testStrictFailsOnAnElementNotCoveredByAnyLayer(): void
+    public function testFailOnUnmatchedElementsFailsOnAnElementNotCoveredByAnyLayer(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
@@ -734,14 +734,28 @@ final class AnalyseCommandTest extends TestCase
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
             '--ruleset' => $fixtures.'/architecture.md',
-            '--strict' => true,
+            '--fail-on-unmatched-elements' => true,
         ]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertStringContainsString('App\Shared\Config is not covered by any layer', $tester->getDisplay());
     }
 
-    public function testStrictSucceedsWhenEverythingParsesAndIsCovered(): void
+    public function testFailOnParseErrorsAloneIgnoresAnElementNotCoveredByAnyLayer(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/DemoApp';
+
+        $tester = $this->tester();
+        $exitCode = $tester->execute([
+            'paths' => $fixtures.'/src',
+            '--ruleset' => $fixtures.'/architecture.md',
+            '--fail-on-parse-errors' => true,
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+    }
+
+    public function testBothFailOnFlagsSucceedWhenEverythingParsesAndIsCovered(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
@@ -749,66 +763,67 @@ final class AnalyseCommandTest extends TestCase
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
             '--ruleset' => $fixtures.'/architecture-full.md',
-            '--strict' => true,
+            '--fail-on-unmatched-elements' => true,
+            '--fail-on-parse-errors' => true,
         ]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStringContainsString('No violations found', $tester->getDisplay());
     }
 
-    public function testMetaStrictElementsFailsWithNoCliFlag(): void
+    public function testMetaUnmatchedElementsFailsWithNoCliFlag(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
-            '--ruleset' => $fixtures.'/architecture-meta-strict-elements.md',
+            '--ruleset' => $fixtures.'/architecture-meta-unmatched-elements.md',
         ]);
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertStringContainsString('App\Shared\Config is not covered by any layer', $tester->getDisplay());
     }
 
-    public function testMetaStrictElementsAloneDoesNotEnforceParsing(): void
+    public function testMetaUnmatchedElementsAloneDoesNotFailOnParseErrors(): void
     {
         $fixtures = __DIR__.'/../Fixtures/BrokenApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
-            '--ruleset' => $fixtures.'/architecture-meta-strict-elements.md',
+            '--ruleset' => $fixtures.'/architecture-meta-unmatched-elements.md',
         ]);
 
         // Meta declares only "Any class not in a layer violates rules." — the broken
-        // file is still silently skipped, proving the split from --strict is real: this
-        // ruleset never opted into failing on a parse error.
+        // file is still silently skipped: this ruleset never opted into failing on a
+        // parse error.
         self::assertSame(Command::SUCCESS, $exitCode);
     }
 
-    public function testMetaStrictParsingFailsWithNoCliFlag(): void
+    public function testMetaParseErrorsFailsWithNoCliFlag(): void
     {
         $fixtures = __DIR__.'/../Fixtures/BrokenApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
-            '--ruleset' => $fixtures.'/architecture-meta-strict-parsing.md',
+            '--ruleset' => $fixtures.'/architecture-meta-parse-errors.md',
         ]);
 
         self::assertSame(Command::INVALID, $exitCode);
         self::assertStringContainsString('Broken.php', $tester->getDisplay());
     }
 
-    public function testNoStrictOverridesAMetaDeclaredPolicyOff(): void
+    public function testNoFailOnUnmatchedElementsOverridesAMetaDeclaredPolicyOff(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             'paths' => $fixtures.'/src',
-            '--ruleset' => $fixtures.'/architecture-meta-strict-elements.md',
-            '--no-strict' => true,
+            '--ruleset' => $fixtures.'/architecture-meta-unmatched-elements.md',
+            '--no-fail-on-unmatched-elements' => true,
         ]);
 
         self::assertSame(Command::SUCCESS, $exitCode);

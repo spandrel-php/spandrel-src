@@ -1473,12 +1473,12 @@ final class RulesetParserTest extends TestCase
             - **Domain**: `App\Domain\**`
             MARKDOWN);
 
-        self::assertFalse($ruleset->meta->strictElements);
-        self::assertFalse($ruleset->meta->strictParsing);
-        self::assertFalse($ruleset->meta->strictLayers);
+        self::assertFalse($ruleset->meta->failOnUnmatchedElements);
+        self::assertFalse($ruleset->meta->failOnParseErrors);
+        self::assertFalse($ruleset->meta->failOnUnusedLayers);
     }
 
-    public function testMetaStrictElementsSentenceParses(): void
+    public function testMetaUnmatchedElementsSentenceParses(): void
     {
         $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
             ## Meta
@@ -1486,12 +1486,12 @@ final class RulesetParserTest extends TestCase
             - Any class not in a layer violates rules.
             MARKDOWN);
 
-        self::assertTrue($ruleset->meta->strictElements);
-        self::assertFalse($ruleset->meta->strictParsing);
-        self::assertFalse($ruleset->meta->strictLayers);
+        self::assertTrue($ruleset->meta->failOnUnmatchedElements);
+        self::assertFalse($ruleset->meta->failOnParseErrors);
+        self::assertFalse($ruleset->meta->failOnUnusedLayers);
     }
 
-    public function testMetaStrictParsingSentenceParses(): void
+    public function testMetaParseErrorsSentenceParses(): void
     {
         $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
             ## Meta
@@ -1499,12 +1499,12 @@ final class RulesetParserTest extends TestCase
             - A file that fails to parse violates rules.
             MARKDOWN);
 
-        self::assertFalse($ruleset->meta->strictElements);
-        self::assertTrue($ruleset->meta->strictParsing);
-        self::assertFalse($ruleset->meta->strictLayers);
+        self::assertFalse($ruleset->meta->failOnUnmatchedElements);
+        self::assertTrue($ruleset->meta->failOnParseErrors);
+        self::assertFalse($ruleset->meta->failOnUnusedLayers);
     }
 
-    public function testMetaStrictLayersSentenceParses(): void
+    public function testMetaUnusedLayersSentenceParses(): void
     {
         $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
             ## Meta
@@ -1512,9 +1512,9 @@ final class RulesetParserTest extends TestCase
             - Every layer must be used in a rule.
             MARKDOWN);
 
-        self::assertFalse($ruleset->meta->strictElements);
-        self::assertFalse($ruleset->meta->strictParsing);
-        self::assertTrue($ruleset->meta->strictLayers);
+        self::assertFalse($ruleset->meta->failOnUnmatchedElements);
+        self::assertFalse($ruleset->meta->failOnParseErrors);
+        self::assertTrue($ruleset->meta->failOnUnusedLayers);
     }
 
     public function testAllThreeMetaSentencesParseTogether(): void
@@ -1527,9 +1527,9 @@ final class RulesetParserTest extends TestCase
             - Every layer must be used in a rule.
             MARKDOWN);
 
-        self::assertTrue($ruleset->meta->strictElements);
-        self::assertTrue($ruleset->meta->strictParsing);
-        self::assertTrue($ruleset->meta->strictLayers);
+        self::assertTrue($ruleset->meta->failOnUnmatchedElements);
+        self::assertTrue($ruleset->meta->failOnParseErrors);
+        self::assertTrue($ruleset->meta->failOnUnusedLayers);
     }
 
     public function testUnknownMetaBulletThrows(): void
@@ -1559,9 +1559,9 @@ final class RulesetParserTest extends TestCase
                 MARKDOWN],
         ]);
 
-        self::assertTrue($ruleset->meta->strictElements);
-        self::assertFalse($ruleset->meta->strictParsing);
-        self::assertTrue($ruleset->meta->strictLayers);
+        self::assertTrue($ruleset->meta->failOnUnmatchedElements);
+        self::assertFalse($ruleset->meta->failOnParseErrors);
+        self::assertTrue($ruleset->meta->failOnUnusedLayers);
     }
 
     public function testParseAllThrowsOnADuplicateLayerNameAcrossFiles(): void

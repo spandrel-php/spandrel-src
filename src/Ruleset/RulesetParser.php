@@ -49,9 +49,9 @@ final class RulesetParser
     private const KIND_SCOPED_OBJECT_TOKEN_PATTERN = '/\bsubtypes of\s+`([^`]+)`|`([^`]+)`|\b(core functions|core classes)\b/';
 
     // `## Meta` bullets are fixed, exactly-matched sentences — no synonyms.
-    private const META_STRICT_ELEMENTS_SENTENCE = 'Any class not in a layer violates rules.';
-    private const META_STRICT_PARSING_SENTENCE = 'A file that fails to parse violates rules.';
-    private const META_STRICT_LAYERS_SENTENCE = 'Every layer must be used in a rule.';
+    private const META_UNMATCHED_ELEMENTS_SENTENCE = 'Any class not in a layer violates rules.';
+    private const META_PARSE_ERRORS_SENTENCE = 'A file that fails to parse violates rules.';
+    private const META_UNUSED_LAYERS_SENTENCE = 'Every layer must be used in a rule.';
 
     // Comma-separated list (optional Oxford "and"/"or") or bare "and"/"or".
     private const ELEMENT_KIND_SEPARATOR = '\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+';
@@ -125,9 +125,9 @@ final class RulesetParser
             array_push($allUnconstrained, ...$unconstrained);
         }
 
-        $strictElements = false;
-        $strictParsing = false;
-        $strictLayers = false;
+        $failOnUnmatchedElements = false;
+        $failOnParseErrors = false;
+        $failOnUnusedLayers = false;
 
         foreach ($files as [$path, $markdown]) {
             try {
@@ -136,21 +136,21 @@ final class RulesetParser
                 throw $multiFile ? $this->withFileLabel($path, $e) : $e;
             }
 
-            $strictElements = $strictElements || $meta->strictElements;
-            $strictParsing = $strictParsing || $meta->strictParsing;
-            $strictLayers = $strictLayers || $meta->strictLayers;
+            $failOnUnmatchedElements = $failOnUnmatchedElements || $meta->failOnUnmatchedElements;
+            $failOnParseErrors = $failOnParseErrors || $meta->failOnParseErrors;
+            $failOnUnusedLayers = $failOnUnusedLayers || $meta->failOnUnusedLayers;
         }
 
-        $meta = new RulesetMeta($strictElements, $strictParsing, $strictLayers);
+        $meta = new RulesetMeta($failOnUnmatchedElements, $failOnParseErrors, $failOnUnusedLayers);
 
         return new Ruleset($layers, $allRules, $allUnconstrained, $allPlaceholderTemplates, $meta);
     }
 
     private function collectMeta(string $markdown): RulesetMeta
     {
-        $strictElements = false;
-        $strictParsing = false;
-        $strictLayers = false;
+        $failOnUnmatchedElements = false;
+        $failOnParseErrors = false;
+        $failOnUnusedLayers = false;
 
         foreach ($this->linesInSection($markdown, 'Meta') as $lineNumber => $line) {
             $trimmed = trim($line);
@@ -162,14 +162,14 @@ final class RulesetParser
             $sentence = trim(substr($trimmed, 1));
 
             match ($sentence) {
-                self::META_STRICT_ELEMENTS_SENTENCE => $strictElements = true,
-                self::META_STRICT_PARSING_SENTENCE => $strictParsing = true,
-                self::META_STRICT_LAYERS_SENTENCE => $strictLayers = true,
+                self::META_UNMATCHED_ELEMENTS_SENTENCE => $failOnUnmatchedElements = true,
+                self::META_PARSE_ERRORS_SENTENCE => $failOnParseErrors = true,
+                self::META_UNUSED_LAYERS_SENTENCE => $failOnUnusedLayers = true,
                 default => throw RulesetParseException::malformedMetaBullet($lineNumber, $line),
             };
         }
 
-        return new RulesetMeta($strictElements, $strictParsing, $strictLayers);
+        return new RulesetMeta($failOnUnmatchedElements, $failOnParseErrors, $failOnUnusedLayers);
     }
 
     private function withFileLabel(string $path, RulesetParseException $e): RulesetParseException

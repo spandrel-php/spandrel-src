@@ -24,7 +24,7 @@ final class DebugRulesetCommandTest extends TestCase
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
-            '--ruleset' => $fixtures.'/architecture-meta-strict-elements.md',
+            '--ruleset' => $fixtures.'/architecture-meta-unmatched-elements.md',
         ]);
 
         self::assertSame(Command::SUCCESS, $exitCode);

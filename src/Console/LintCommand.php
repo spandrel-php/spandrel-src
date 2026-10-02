@@ -8,7 +8,6 @@ use Spandrel\Spandrel\Cache\Cache;
 use Spandrel\Spandrel\Config\ConfigLoader;
 use Spandrel\Spandrel\Config\ConfigParseException;
 use Spandrel\Spandrel\Ruleset\AmbiguousLayerMatchException;
-use Spandrel\Spandrel\Ruleset\Layer;
 use Spandrel\Spandrel\Ruleset\LayerResolver;
 use Spandrel\Spandrel\Ruleset\RulesetParseException;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -23,11 +22,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * Validates a ruleset without evaluating any code for violations.
  *
  * Always checked: the ruleset parses (grammar, unique layer names, no
- * conflicting rule mode per subject), and — under `--strict-layers` —
- * that every declared layer either appears in some rule or is explicitly
- * declared `may depend on anything`. `--strict-layers` can also be turned
- * on by the ruleset itself (`## Meta`'s "Every layer must be used in a
- * rule."); `--no-strict-layers` forces it off regardless.
+ * conflicting rule mode per subject), and — under `--fail-on-unused-layers` —
+ * that every declared layer appears in some rule or is explicitly declared
+ * `may depend on anything`, directly or through a group containing it.
+ * `--fail-on-unused-layers` defaults to the ruleset's own `## Meta` ("Every
+ * layer must be used in a rule."); `--no-fail-on-unused-layers` forces it
+ * off regardless.
  *
  * Checked only when `paths` is given, since these need a real Code Graph:
  * no element matches more than one leaf layer (failure), and no declared,
@@ -53,8 +53,7 @@ final class LintCommand extends Command
             ->addOption('ruleset', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Path to a ruleset file; repeatable to merge several', [])
             ->addOption('cache-dir', null, InputOption::VALUE_REQUIRED, 'Directory to cache parsed file results in; defaults to cache.directory in spandrel.yaml')
             ->addOption('no-cache', null, InputOption::VALUE_NONE, 'Disable caching even if cache.directory is configured')
-            ->addOption('strict-layers', null, InputOption::VALUE_NONE, 'Fail if any layer is unused in every rule and not declared `may depend on anything`')
-            ->addOption('no-strict-layers', null, InputOption::VALUE_NONE, 'Disable strict-layers mode even if the ruleset declares it in `## Meta`');
+            ->addOption('fail-on-unused-layers', null, InputOption::VALUE_NEGATABLE, 'Fail if any layer is neither used in a rule nor declared `may depend on anything`, directly or through a group; defaults to the ruleset\'s `## Meta`');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -100,29 +99,12 @@ final class LintCommand extends Command
             return Command::INVALID;
         }
 
-        $noStrictLayers = (bool) $input->getOption('no-strict-layers');
-        $strictLayersOption = (bool) $input->getOption('strict-layers');
-        $strictLayers = $noStrictLayers ? false : ($strictLayersOption || $ruleset->meta->strictLayers);
+        /** @var bool|null $failOnUnusedLayersOption */
+        $failOnUnusedLayersOption = $input->getOption('fail-on-unused-layers');
+        $failOnUnusedLayers = $failOnUnusedLayersOption ?? $ruleset->meta->failOnUnusedLayers;
 
-        if ($strictLayers) {
-            $usedNames = [];
-
-            foreach ($ruleset->rules as $rule) {
-                if (is_string($rule->subject)) {
-                    $usedNames[$rule->subject] = true;
-                }
-
-                if (is_string($rule->object)) {
-                    $usedNames[$rule->object] = true;
-                }
-            }
-
-            $unconstrained = array_flip($ruleset->unconstrainedLayers);
-
-            $staleLayers = array_filter(
-                $ruleset->layers,
-                static fn (Layer $layer): bool => !isset($usedNames[$layer->name]) && !isset($unconstrained[$layer->name]),
-            );
+        if ($failOnUnusedLayers) {
+            $staleLayers = $ruleset->unusedLayers();
 
             if ($staleLayers !== []) {
                 foreach ($staleLayers as $layer) {
