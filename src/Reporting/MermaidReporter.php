@@ -11,12 +11,18 @@ use Spandrel\Spandrel\Ruleset\LayerResolver;
 use Spandrel\Spandrel\Ruleset\Ruleset;
 
 /**
- * A Mermaid `flowchart` at layer granularity. Nodes are layers (a group
- * renders as a `subgraph` containing its members' leaf names, one level
- * deep); edges are observed dependencies aggregated per `(fromLayer,
- * toLayer)` pair — solid + count when compliant, dotted + `"N (M
- * violating)"` when any dependency in that pair violated a rule.
- * Same-layer and layer-less edges are omitted.
+ * A Mermaid `flowchart` at layer granularity; docs/report.md documents the
+ * encodings. Nodes are leaf layers: an external layer as `Name[[Name]]`, a
+ * leaf matching no element with a dashed border (`:::empty`). A group renders
+ * as a `subgraph` of its leaves, one level deep; since a node can only sit in
+ * one subgraph, each leaf goes to the first declared group containing it, and
+ * a derived `<Group>_` prefix is dropped from its label there.
+ *
+ * Edges are observed dependencies aggregated per `(fromLayer, toLayer)` pair:
+ * thin + count when compliant, thick red + `"N (M violating)"` when any
+ * dependency in the pair violated a rule. A target outside the parsed source
+ * counts towards every external layer whose pattern it matches, as the Rule
+ * Engine evaluates them. Same-layer and layer-less edges are omitted.
  *
  * `$layerName`, when given, scopes the diagram to one layer's immediate
  * neighborhood: only pairs touching it survive, and only the layers those
@@ -33,6 +39,8 @@ final class MermaidReporter implements GraphReporter
     // Readability heuristic, not a Mermaid/GitHub rendering limit.
     private const MAX_NODES = 40;
     private const MAX_EDGES = 60;
+
+    private const VIOLATING_STROKE = '#d73a49';
 
     /**
      * @param string|null $layerName scope to this layer (leaf or group) and its immediate
@@ -79,23 +87,44 @@ final class MermaidReporter implements GraphReporter
             $violatingKeys[self::key($violation->file, $violation->line, $violation->fromElement, $violation->toElement)] = true;
         }
 
+        $externalLayers = array_values(array_filter($ruleset->layers, static fn (Layer $layer): bool => $layer->isExternal));
+
+        /** @var array<string, string[]> $externalTargets FQCN => matching external layer names */
+        $externalTargets = [];
+
         /** @var array<string, array{from: string, to: string, total: int, violating: int}> $pairs */
         $pairs = [];
 
         foreach ($graph->dependencies as $dependency) {
             $fromLayer = $resolution->layerOf($dependency->from);
-            $toLayer = $resolution->layerOf($dependency->to);
 
-            if ($fromLayer === null || $toLayer === null || $fromLayer === $toLayer) {
+            if ($fromLayer === null) {
                 continue;
             }
 
-            $pairKey = $fromLayer.'|'.$toLayer;
-            $pairs[$pairKey] ??= ['from' => $fromLayer, 'to' => $toLayer, 'total' => 0, 'violating' => 0];
-            $pairs[$pairKey]['total']++;
+            // An internal element always wins over an external pattern.
+            $toLayer = $resolution->layerOf($dependency->to);
+            $toLayers = $toLayer !== null
+                ? [$toLayer]
+                : $externalTargets[$dependency->to] ??= array_values(array_map(
+                    static fn (Layer $layer): string => $layer->name,
+                    array_filter($externalLayers, static fn (Layer $layer): bool => $layer->matches($dependency->to)),
+                ));
 
-            if (isset($violatingKeys[self::key($dependency->file, $dependency->line, $dependency->from, $dependency->to)])) {
-                $pairs[$pairKey]['violating']++;
+            $violating = isset($violatingKeys[self::key($dependency->file, $dependency->line, $dependency->from, $dependency->to)]);
+
+            foreach ($toLayers as $to) {
+                if ($to === $fromLayer) {
+                    continue;
+                }
+
+                $pairKey = $fromLayer.'|'.$to;
+                $pairs[$pairKey] ??= ['from' => $fromLayer, 'to' => $to, 'total' => 0, 'violating' => 0];
+                $pairs[$pairKey]['total']++;
+
+                if ($violating) {
+                    $pairs[$pairKey]['violating']++;
+                }
             }
         }
 
@@ -134,9 +163,10 @@ final class MermaidReporter implements GraphReporter
                 continue;
             }
 
-            $memberNames = $relevantLeaves === null
-                ? self::leafNames($layer)
-                : array_values(array_filter(self::leafNames($layer), static fn (string $name): bool => isset($relevantLeaves[$name])));
+            $memberNames = array_values(array_filter(
+                array_unique(self::leafNames($layer)),
+                static fn (string $name): bool => !isset($claimed[$name]) && ($relevantLeaves === null || isset($relevantLeaves[$name])),
+            ));
 
             if ($memberNames === []) {
                 continue;
@@ -163,25 +193,45 @@ final class MermaidReporter implements GraphReporter
             $bareLeaves[] = $layer->name;
         }
 
-        return new MermaidDiagram($subgraphs, $bareLeaves, $pairs);
+        $emptyLayers = [];
+
+        foreach ($ruleset->layers as $layer) {
+            if (!$layer->isGroup && !$layer->isExternal && ($resolution->matches[$layer->name] ?? []) === []) {
+                $emptyLayers[$layer->name] = true;
+            }
+        }
+
+        return new MermaidDiagram(
+            $subgraphs,
+            $bareLeaves,
+            $pairs,
+            array_fill_keys(array_map(static fn (Layer $layer): string => $layer->name, $externalLayers), true),
+            $emptyLayers,
+        );
     }
 
     private function render(MermaidDiagram $diagram): string
     {
         $lines = ['flowchart LR'];
 
+        $renderedLeaves = array_merge($diagram->bareLeaves, ...array_values($diagram->subgraphs));
+
+        if (array_intersect_key($diagram->emptyLayers, array_flip($renderedLeaves)) !== []) {
+            $lines[] = '    classDef empty stroke-dasharray: 5 5';
+        }
+
         foreach ($diagram->subgraphs as $name => $members) {
             $lines[] = sprintf('    subgraph %s', $name);
 
             foreach ($members as $leafName) {
-                $lines[] = sprintf('        %s', $leafName);
+                $lines[] = '        '.self::node($diagram, $leafName, $name);
             }
 
             $lines[] = '    end';
         }
 
         foreach ($diagram->bareLeaves as $leafName) {
-            $lines[] = sprintf('    %s', $leafName);
+            $lines[] = '    '.self::node($diagram, $leafName, null);
         }
 
         $pairs = $diagram->pairs;
@@ -191,14 +241,41 @@ final class MermaidReporter implements GraphReporter
 
             $lines[] = '';
 
-            foreach ($pairs as $pair) {
-                $lines[] = $pair['violating'] > 0
-                    ? sprintf('    %s -.->|"%d (%d violating)"| %s', $pair['from'], $pair['total'], $pair['violating'], $pair['to'])
-                    : sprintf('    %s -->|"%d"| %s', $pair['from'], $pair['total'], $pair['to']);
+            // linkStyle addresses edges by their position in the output.
+            $violatingIndexes = [];
+
+            foreach (array_values($pairs) as $index => $pair) {
+                if ($pair['violating'] > 0) {
+                    $violatingIndexes[] = $index;
+                    $lines[] = sprintf('    %s ==>|"%d (%d violating)"| %s', $pair['from'], $pair['total'], $pair['violating'], $pair['to']);
+                } else {
+                    $lines[] = sprintf('    %s -->|"%d"| %s', $pair['from'], $pair['total'], $pair['to']);
+                }
+            }
+
+            if ($violatingIndexes !== []) {
+                $lines[] = sprintf('    linkStyle %s stroke:%s', implode(',', $violatingIndexes), self::VIOLATING_STROKE);
             }
         }
 
         return implode("\n", $lines)."\n";
+    }
+
+    private static function node(MermaidDiagram $diagram, string $leafName, ?string $groupName): string
+    {
+        $label = $groupName !== null && str_starts_with($leafName, $groupName.'_')
+            ? substr($leafName, strlen($groupName) + 1)
+            : $leafName;
+
+        if (isset($diagram->externalLayers[$leafName])) {
+            $node = sprintf('%s[[%s]]', $leafName, $label);
+        } elseif ($label !== $leafName) {
+            $node = sprintf('%s[%s]', $leafName, $label);
+        } else {
+            $node = $leafName;
+        }
+
+        return isset($diagram->emptyLayers[$leafName]) ? $node.':::empty' : $node;
     }
 
     private static function key(string $file, int $line, string $from, string $to): string

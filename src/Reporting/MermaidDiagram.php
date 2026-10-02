@@ -16,11 +16,15 @@ final class MermaidDiagram
      * @param array<string, string[]> $subgraphs group layer name => member leaf names
      * @param string[] $bareLeaves leaf layers not claimed by any rendered subgraph
      * @param array<string, array{from: string, to: string, total: int, violating: int}> $pairs keyed by "fromLayer|toLayer"
+     * @param array<string, true> $externalLayers external layer names, rendered as `[[…]]`
+     * @param array<string, true> $emptyLayers non-external leaves matching no element, rendered dashed
      */
     public function __construct(
         public readonly array $subgraphs,
         public readonly array $bareLeaves,
         public readonly array $pairs,
+        public readonly array $externalLayers = [],
+        public readonly array $emptyLayers = [],
     ) {
     }
 

@@ -205,36 +205,56 @@ A [Mermaid](https://mermaid.js.org/) `flowchart` at layer granularity,
 rendered natively by GitHub and GitLab in Markdown — a PR comment or
 README with a ` ```mermaid ` fence needs no separate tool to view it.
 
-**Nodes are layers, not elements.** A group layer renders as a
-`subgraph` containing its members' nodes:
+**Nodes are layers, not elements**, and every element and connection
+has one meaning:
+
+| Diagram | Meaning |
+|---|---|
+| `Name` (box) | a layer matching code |
+| `Name:::empty` (dashed border) | a layer matching no code yet, e.g. a [listed placeholder value](ruleset.md#listing-values-before-the-code-exists) |
+| `Name[[Name]]` (double-sided box) | an [external layer](ruleset.md#external-layers): a vendor namespace Spandrel doesn't parse, so arrows only point into it |
+| `subgraph` | a group layer |
+| `A -->` (thin arrow) | dependencies from `A` to `B`, none violating |
+| `A ==>` (thick red arrow) | dependencies from `A` to `B`, at least one violating |
 
 ```
 $ spandrel analyse src --report=mermaid
 flowchart LR
-    subgraph Core
-        Parser
-        Graph
+    classDef empty stroke-dasharray: 5 5
+    subgraph Runs
+        Runs_Domain[Domain]
+        Runs_Infrastructure[Infrastructure]
     end
+    subgraph Reporting
+        Reporting_Domain[Domain]:::empty
+    end
+    Psr[[Psr]]
 
-    Parser -->|"1"| Graph
+    Runs_Domain -->|"3"| Psr
+    Runs_Infrastructure ==>|"8 (3 violating)"| Runs_Domain
+    linkStyle 1 stroke:#d73a49
 ```
+
+A layer can only sit in one subgraph, so when groups overlap (every
+leaf of a two-capture placeholder is in a module and a layer group),
+each leaf goes into the **first declared** group containing it, and a
+group with nothing left isn't drawn. For `App\{Module}\{Layer}\**`
+that's one subgraph per module. Inside its subgraph, a derived leaf's
+label drops the group prefix (`Runs_Domain` shows as `Domain`).
 
 **Edges are observed dependencies, aggregated per `(fromLayer,
 toLayer)` pair** — one edge per pair with at least one dependency
-between them, not one per individual `Dependency`. A pair with no
-violation among its dependencies is a solid arrow labeled with the
-count; a pair with at least one violation is a dotted arrow with both
-counts:
+between them, not one per individual `Dependency`, labelled with the
+count, plus the violating count if any. The rules themselves aren't
+drawn: they show up as violating edges, and `debug:ruleset` lists them.
 
-```
-Domain -->|"12"| Application
-Domain -.->|"8 (3 violating)"| Infrastructure
-```
-
-Same-layer edges and edges from/to an element with no resolved layer
-are omitted — always allowed or never flagged, respectively, so
-neither adds anything but clutter. A layer with no edges at all still
-renders as a bare node, so it isn't hidden just because nothing
+A dependency on a class outside the parsed source counts towards every
+external layer whose pattern matches it, the same way rules evaluate
+external layers; a class in the parsed source always belongs to its
+own layer instead. Same-layer edges and edges from/to anything else
+without a layer are omitted — always allowed or never flagged,
+respectively, so neither adds anything but clutter. A layer with no
+edges at all still renders, so it isn't hidden just because nothing
 depends on it yet.
 
 **Output is the raw diagram text** — no ` ```mermaid ` fence, no

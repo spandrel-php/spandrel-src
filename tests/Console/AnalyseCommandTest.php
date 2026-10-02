@@ -388,7 +388,7 @@ final class AnalyseCommandTest extends TestCase
 
         $display = $tester->getDisplay();
         self::assertStringContainsString('flowchart LR', $display);
-        self::assertStringContainsString('Domain -.->', $display);
+        self::assertStringContainsString('Domain ==>', $display);
         self::assertStringContainsString('violating', $display);
     }
 

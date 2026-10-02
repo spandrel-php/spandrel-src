@@ -6,11 +6,12 @@ namespaces, `Version` the newest, holding the git tag/commit `box
 compile` bakes into a release build (see [box.json](../box.json)) and
 what the SARIF reporter's `tool.driver.version` reports.
 
-Layers are declared via the `{Layer}` placeholder form — see
-[docs/ruleset.md](ruleset.md#auto-derived-layers-placeholders) —
-so each namespace segment directly under `Spandrel\Spandrel\` becomes
-its own layer automatically as real code is added, without a bullet
-needing to be added here by hand.
+Layers are declared via the `{Layer}` placeholder form with its values
+listed — see
+[docs/ruleset.md](ruleset.md#listing-values-before-the-code-exists) —
+so each namespace directly under `Spandrel\Spandrel\` is a layer
+without a bullet of its own. The list is closed: a new namespace stays
+unmatched, and fails analysis, until it's added here along with a rule.
 
 ## Meta
 
@@ -21,6 +22,7 @@ needing to be added here by hand.
 ## Layers
 
 - `Spandrel\Spandrel\{Layer}\**`
+  - with Layers `Baseline`, `Cache`, `Config`, `Console`, `Graph`, `Loader`, `Parser`, `Reporting`, `RuleEngine`, `Ruleset`, and `Version`
 
 - **IO** groups `Config`, `Loader`, `Cache`, `Reporting`, `Console`, `Baseline`, and `Version`
 - **Core** groups `Graph`, `Ruleset`, `Parser`, and `RuleEngine`
@@ -49,8 +51,6 @@ pattern the rule below can enforce against, with nothing added to
 - `Cache` may only depend on `Graph`
 - `Reporting` may only depend on `RuleEngine`, `Graph`, `Ruleset`, and `Version`
 - `Baseline` may only depend on `RuleEngine`
-
-- `Console` may depend on anything
 
 ## Diagram
 
@@ -88,15 +88,15 @@ flowchart LR
     Console -->|"2"| Graph
     Console -->|"1"| Loader
     Console -->|"2"| Parser
-    Console -->|"8"| Reporting
+    Console -->|"9"| Reporting
     Console -->|"1"| RuleEngine
-    Console -->|"15"| Ruleset
+    Console -->|"14"| Ruleset
     Parser -->|"22"| Graph
     Reporting -->|"3"| Graph
-    Reporting -->|"7"| RuleEngine
+    Reporting -->|"8"| RuleEngine
     Reporting -->|"7"| Ruleset
     Reporting -->|"1"| Version
     RuleEngine -->|"15"| Graph
     RuleEngine -->|"35"| Ruleset
-    Ruleset -->|"16"| Graph
+    Ruleset -->|"17"| Graph
 ```
