@@ -344,8 +344,9 @@ final class MermaidReporterTest extends TestCase
 
         $output = (new MermaidReporter(force: true))->format([], $graph, $ruleset);
 
-        self::assertStringContainsString("    Layer0\n", $output);
-        self::assertStringContainsString("    Layer40\n", $output);
+        // No elements, so every layer also renders as empty.
+        self::assertStringContainsString("    Layer0:::empty\n", $output);
+        self::assertStringContainsString("    Layer40:::empty\n", $output);
     }
 
     public function testThrowsWhenEdgeCountExceedsTheReadabilityLimit(): void
