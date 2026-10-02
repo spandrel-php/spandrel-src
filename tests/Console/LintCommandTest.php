@@ -137,14 +137,14 @@ final class LintCommandTest extends TestCase
         self::assertStringNotContainsString('matched zero elements', $tester->getDisplay());
     }
 
-    public function testExternalLayerUsedOnlyAsARuleObjectDoesNotTripStrictLayers(): void
+    public function testExternalLayerUsedOnlyAsARuleObjectDoesNotTripFailOnUnusedLayers(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             '--ruleset' => $fixtures.'/architecture-external-layer.md',
-            '--strict-layers' => true,
+            '--fail-on-unused-layers' => true,
         ]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
@@ -251,14 +251,14 @@ final class LintCommandTest extends TestCase
         self::assertStringContainsString('[OK]', $tester->getDisplay());
     }
 
-    public function testStrictLayersFailsWithoutAnyRulesAndNeedsNoPaths(): void
+    public function testFailOnUnusedLayersFailsWithoutAnyRulesAndNeedsNoPaths(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         // Explicit --config with no source.paths, rather than relying on no
         // spandrel.yaml existing at the process CWD (this repo's own
         // spandrel.yaml would otherwise make this test CWD-dependent) —
-        // deliberately proving --strict-layers works with zero source.
+        // deliberately proving --fail-on-unused-layers works with zero source.
         $configPath = tempnam(sys_get_temp_dir(), 'spandrel-yaml-');
         self::assertIsString($configPath);
         file_put_contents($configPath, "ruleset: architecture.md\n");
@@ -268,7 +268,7 @@ final class LintCommandTest extends TestCase
             $exitCode = $tester->execute([
                 '--ruleset' => $fixtures.'/architecture.md',
                 '--config' => $configPath,
-                '--strict-layers' => true,
+                '--fail-on-unused-layers' => true,
             ]);
 
             self::assertSame(Command::INVALID, $exitCode);
@@ -280,54 +280,54 @@ final class LintCommandTest extends TestCase
         }
     }
 
-    public function testStrictLayersFailsOnAnUncoveredGroupLayer(): void
+    public function testFailOnUnusedLayersFailsOnAnUncoveredGroupLayer(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             '--ruleset' => $fixtures.'/architecture-groups.md',
-            '--strict-layers' => true,
+            '--fail-on-unused-layers' => true,
         ]);
 
         self::assertSame(Command::INVALID, $exitCode);
         self::assertStringContainsString('IO', $tester->getDisplay());
     }
 
-    public function testStrictLayersCountsLeavesCoveredOnlyThroughGroupsAsUsed(): void
+    public function testFailOnUnusedLayersCountsLeavesCoveredOnlyThroughGroupsAsUsed(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             '--ruleset' => $fixtures.'/architecture-group-coverage.md',
-            '--strict-layers' => true,
+            '--fail-on-unused-layers' => true,
         ]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStringNotContainsString('not used in any rule', $tester->getDisplay());
     }
 
-    public function testStrictLayersSucceedsWhenEveryLayerIsCovered(): void
+    public function testFailOnUnusedLayersSucceedsWhenEveryLayerIsCovered(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         $tester = $this->tester();
         $exitCode = $tester->execute([
             '--ruleset' => $fixtures.'/architecture-full.md',
-            '--strict-layers' => true,
+            '--fail-on-unused-layers' => true,
         ]);
 
         self::assertSame(Command::SUCCESS, $exitCode);
         self::assertStringContainsString('is valid', $tester->getDisplay());
     }
 
-    public function testMetaStrictLayersFailsWithNoCliFlag(): void
+    public function testMetaUnusedLayersFailsWithNoCliFlag(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
         // Explicit --config with no source.paths, same isolation reason as
-        // testStrictLayersFailsWithoutAnyRulesAndNeedsNoPaths above.
+        // testFailOnUnusedLayersFailsWithoutAnyRulesAndNeedsNoPaths above.
         $configPath = tempnam(sys_get_temp_dir(), 'spandrel-yaml-');
         self::assertIsString($configPath);
         file_put_contents($configPath, "ruleset: architecture.md\n");
@@ -335,7 +335,7 @@ final class LintCommandTest extends TestCase
         try {
             $tester = $this->tester();
             $exitCode = $tester->execute([
-                '--ruleset' => $fixtures.'/architecture-meta-strict-layers.md',
+                '--ruleset' => $fixtures.'/architecture-meta-unused-layers.md',
                 '--config' => $configPath,
             ]);
 
@@ -348,7 +348,7 @@ final class LintCommandTest extends TestCase
         }
     }
 
-    public function testNoStrictLayersOverridesAMetaDeclaredPolicyOff(): void
+    public function testNoFailOnUnusedLayersOverridesAMetaDeclaredPolicyOff(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';
 
@@ -359,9 +359,9 @@ final class LintCommandTest extends TestCase
         try {
             $tester = $this->tester();
             $exitCode = $tester->execute([
-                '--ruleset' => $fixtures.'/architecture-meta-strict-layers.md',
+                '--ruleset' => $fixtures.'/architecture-meta-unused-layers.md',
                 '--config' => $configPath,
-                '--no-strict-layers' => true,
+                '--no-fail-on-unused-layers' => true,
             ]);
 
             self::assertSame(Command::SUCCESS, $exitCode);

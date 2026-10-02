@@ -37,10 +37,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * layer resolution, Rule Engine) and reports violations via one of the
  * `Reporting\Reporter` implementations.
  *
- * `--strict` bundles two independent checks (`RulesetMeta::$strictElements`,
- * `RulesetMeta::$strictParsing`); either can also be turned on by the
- * ruleset itself via a `## Meta` sentence. `--no-strict` forces both off
- * regardless of what the ruleset declares.
+ * `--fail-on-unmatched-elements` and `--fail-on-parse-errors` each default
+ * to the ruleset's own `## Meta` sentence
+ * (`RulesetMeta::$failOnUnmatchedElements`, `RulesetMeta::$failOnParseErrors`);
+ * their `--no-` forms force the check off regardless of what the ruleset
+ * declares.
  */
 #[AsCommand(name: 'analyse', aliases: ['analyze'], description: 'Run the pipeline and report violations')]
 final class AnalyseCommand extends Command
@@ -72,8 +73,8 @@ final class AnalyseCommand extends Command
             ->addOption('baseline', null, InputOption::VALUE_REQUIRED, 'Path to a baseline file to suppress known violations; defaults to baseline in spandrel.yaml')
             ->addOption('generate-baseline', null, InputOption::VALUE_NONE, 'Write current violations to the baseline file instead of failing')
             ->addOption('no-baseline', null, InputOption::VALUE_NONE, 'Disable baseline suppression even if baseline is configured')
-            ->addOption('strict', null, InputOption::VALUE_NONE, 'Fail on a PHP parse error or an element not covered by any layer, instead of skipping silently')
-            ->addOption('no-strict', null, InputOption::VALUE_NONE, 'Disable strict mode even if the ruleset declares it in `## Meta`');
+            ->addOption('fail-on-unmatched-elements', null, InputOption::VALUE_NEGATABLE, 'Fail on an element not covered by any layer, instead of skipping it silently; defaults to the ruleset\'s `## Meta`')
+            ->addOption('fail-on-parse-errors', null, InputOption::VALUE_NEGATABLE, 'Fail on a PHP parse error, instead of skipping the file silently; defaults to the ruleset\'s `## Meta`');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -152,9 +153,6 @@ final class AnalyseCommand extends Command
         $cacheDirectory = $noCache ? null : ($cacheDirOption ?? ($config !== null ? $config->cacheDirectory : null));
         $cache = $cacheDirectory !== null ? new Cache($cacheDirectory) : null;
 
-        $noStrict = (bool) $input->getOption('no-strict');
-        $strictOption = (bool) $input->getOption('strict');
-
         // Loaded before the ruleset so it can derive {Name} placeholder layers
         // against the discovered Elements.
         [$elements, $dependencies, $parseErrors] = $this->sourceGraphBuilder->build($sourcePaths, $cache, $exclude);
@@ -171,8 +169,13 @@ final class AnalyseCommand extends Command
             return Command::INVALID;
         }
 
-        $failOnUnmatched = $noStrict ? false : ($strictOption || $ruleset->meta->strictElements);
-        $failOnParseError = $noStrict ? false : ($strictOption || $ruleset->meta->strictParsing);
+        /** @var bool|null $failOnUnmatchedOption */
+        $failOnUnmatchedOption = $input->getOption('fail-on-unmatched-elements');
+        $failOnUnmatched = $failOnUnmatchedOption ?? $ruleset->meta->failOnUnmatchedElements;
+
+        /** @var bool|null $failOnParseErrorOption */
+        $failOnParseErrorOption = $input->getOption('fail-on-parse-errors');
+        $failOnParseError = $failOnParseErrorOption ?? $ruleset->meta->failOnParseErrors;
 
         if ($failOnParseError && $parseErrors !== []) {
             foreach ($parseErrors as $parseError) {

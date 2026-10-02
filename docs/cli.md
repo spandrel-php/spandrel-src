@@ -57,12 +57,11 @@ php bin/spandrel.php analyse [paths] [options]
 | `--baseline=<path>` | Baseline file to suppress already-known violations, instead of `baseline` in `spandrel.yaml`. |
 | `--generate-baseline` | Write current violations to the baseline file and exit `0`, instead of evaluating pass/fail. Exit `2` if no baseline path is available. |
 | `--no-baseline` | Disable baseline suppression for this run even if one is configured. |
-| `--strict` | Fail on a PHP parse error, or on an element not covered by any layer, instead of skipping silently. Also turned on by the ruleset's own `## Meta` sentences — see below. |
-| `--no-strict` | Force strict mode off for this run, even if the ruleset declares it in `## Meta`. |
+| `--fail-on-unmatched-elements` | Fail on an element not covered by any layer, instead of skipping it silently. Defaults to the ruleset's `## Meta` — see below. `--no-fail-on-unmatched-elements` forces it off. |
+| `--fail-on-parse-errors` | Fail on a PHP parse error, instead of skipping the file silently. Defaults to the ruleset's `## Meta` — see below. `--no-fail-on-parse-errors` forces it off. |
 | `-v` / `--verbose` | Standard Symfony verbosity flag — under the `console` format, also prints the matched rule's text under each violation line. |
 
-`--strict` bundles two independent checks, and they don't fail the
-same way:
+The two checks are independent, and they don't fail the same way:
 
 - an **element with no layer** is reported per-element and the run
   exits `1` — the same code as an ordinary violation, since "code that
@@ -72,12 +71,12 @@ same way:
   treated as an invalid run rather than a violation, since no
   Dependency edges could be extracted from that file at all.
 
-Either check can also be turned on independently by the ruleset itself
-(`## Meta`'s `Any class not in a layer violates rules.` /
-`A file that fails to parse violates rules.`), so a project's
-strictness posture doesn't depend on every invocation remembering the
-flag. `--no-strict` forces both off regardless of what the ruleset
-declares.
+Either check can also be turned on by the ruleset itself (`## Meta`'s
+`Any class not in a layer violates rules.` /
+`A file that fails to parse violates rules.`), so a project's policy
+doesn't depend on every invocation remembering the flag. The flag, in
+either form, overrides what the ruleset declares; given both forms, the
+last one wins.
 
 Config/ruleset load failures, a malformed or unsupported `--report`
 value, an unrecognised `--diagram-scope`, an unknown `--diagram-layer`,
@@ -124,19 +123,18 @@ php bin/spandrel.php lint [paths] [options]
 | `--ruleset=<path>` | Same as `analyse`. |
 | `--cache-dir=<path>` | Same as `analyse`. |
 | `--no-cache` | Same as `analyse`. |
-| `--strict-layers` | Fail if any declared layer is neither used in a rule nor declared `may depend on anything`, directly or through a group containing it. Also turned on by `## Meta`'s `Every layer must be used in a rule.`. |
-| `--no-strict-layers` | Force strict-layers mode off for this run, even if the ruleset declares it in `## Meta`. |
+| `--fail-on-unused-layers` | Fail if any declared layer is neither used in a rule nor declared `may depend on anything`, directly or through a group containing it. Defaults to `## Meta`'s `Every layer must be used in a rule.`; `--no-fail-on-unused-layers` forces it off. |
 
 Always checked, with no source needed: the ruleset parses, layer names
 are unique, no layer carries conflicting rule modes, and (under
-`--strict-layers`) every declared layer is used. Checked only when
+`--fail-on-unused-layers`) every declared layer is used. Checked only when
 `paths` is given, since these need a real Code Graph: no element
 matches more than one leaf layer (failure), and no declared,
 non-external layer matches zero elements (a warning only — printed,
 but doesn't change the exit code).
 
-Exit `2` on a config/ruleset load error, a stale layer under
-`--strict-layers`, or an `AmbiguousLayerMatchException`. Exit `0`
+Exit `2` on a config/ruleset load error, an unused layer under
+`--fail-on-unused-layers`, or an `AmbiguousLayerMatchException`. Exit `0`
 otherwise — `lint` never exits `1`, since it never evaluates
 violations.
 
@@ -165,8 +163,8 @@ Prints a table of every layer (external layers marked `(external)`),
 its patterns, and its match count, followed by an `Unmatched: N` line
 for elements no layer claimed. An element landing in `Unmatched` is
 silently excluded from analysis by default — not flagged — so a
-project can adopt Spandrel one layer at a time; `analyse --strict`
-(the element-coverage half) is what opts into failing on it.
+project can adopt Spandrel one layer at a time;
+`analyse --fail-on-unmatched-elements` is what opts into failing on it.
 
 Exit `1` on a missing source path or a config/ruleset load error;
 `0` otherwise. Note this command takes `path` (singular), unlike every

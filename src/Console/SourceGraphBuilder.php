@@ -20,8 +20,9 @@ use Spandrel\Spandrel\Parser\Parser;
  * stored `Element`/`Dependency` lists as-is.
  *
  * A file with a PHP syntax error is skipped, not fatal, and collected into
- * the returned `ParseError[]` so a caller that cares (`analyse --strict`)
- * can escalate; every other caller can ignore the third return element.
+ * the returned `ParseError[]` so a caller that cares
+ * (`analyse --fail-on-parse-errors`) can escalate; every other caller can
+ * ignore the third return element.
  */
 final class SourceGraphBuilder
 {

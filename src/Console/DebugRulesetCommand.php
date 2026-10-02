@@ -91,19 +91,19 @@ final class DebugRulesetCommand extends Command
             return Command::FAILURE;
         }
 
-        if ($ruleset->meta->strictElements || $ruleset->meta->strictParsing || $ruleset->meta->strictLayers) {
+        if ($ruleset->meta->failOnUnmatchedElements || $ruleset->meta->failOnParseErrors || $ruleset->meta->failOnUnusedLayers) {
             $io->writeln('## Meta');
             $io->newLine();
 
-            if ($ruleset->meta->strictElements) {
+            if ($ruleset->meta->failOnUnmatchedElements) {
                 $io->writeln('- Any class not in a layer violates rules.');
             }
 
-            if ($ruleset->meta->strictParsing) {
+            if ($ruleset->meta->failOnParseErrors) {
                 $io->writeln('- A file that fails to parse violates rules.');
             }
 
-            if ($ruleset->meta->strictLayers) {
+            if ($ruleset->meta->failOnUnusedLayers) {
                 $io->writeln('- Every layer must be used in a rule.');
             }
 

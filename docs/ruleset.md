@@ -126,8 +126,8 @@ are a deliberate exception, below):
 - **No match** → excluded from analysis entirely, silently by
   default — this is intentional, so a project can adopt Spandrel one
   part of the codebase at a time (`debug:layers`' `Unmatched: N`
-  count, and `analyse --strict`'s element-coverage half, are the two
-  ways to stop ignoring it).
+  count, and `analyse --fail-on-unmatched-elements`, are the two ways
+  to stop ignoring it).
 - **Exactly one match** → the element belongs to that layer.
 - **More than one match** → a **ruleset load error**, naming every
   conflicting layer:
@@ -302,20 +302,18 @@ invocation remembering the right flag:
 
 | Sentence | Equivalent to |
 |---|---|
-| `Any class not in a layer violates rules.` | `analyse --strict` (element-coverage half) |
-| `A file that fails to parse violates rules.` | `analyse --strict` (parse-error half) |
-| `Every layer must be used in a rule.` | `lint --strict-layers` |
+| `Any class not in a layer violates rules.` | `analyse --fail-on-unmatched-elements` |
+| `A file that fails to parse violates rules.` | `analyse --fail-on-parse-errors` |
+| `Every layer must be used in a rule.` | `lint --fail-on-unused-layers` |
 
 Each is a fixed, canonical sentence, matched exactly — no synonyms.
-The first two are independent halves of `--strict`: they were always
-one bundled CLI flag, but nothing requires wanting both at once (a
-ruleset mid-migration might want to fail on a stray unmatched class
-without also demanding every file parse cleanly yet), so `## Meta` can
-turn on either alone. A CLI flag always wins over what's declared
-here: `--strict`/`--strict-layers` turn a policy on regardless of
-`## Meta`, and `--no-strict`/`--no-strict-layers` force it off
-regardless — `## Meta` only supplies the default when neither flag is
-given. See [docs/cli.md](cli.md#analyse-alias-analyze) for exactly how
+The first two are independent: nothing requires wanting both at once
+(a ruleset mid-migration might want to fail on a stray unmatched class
+without also demanding every file parse cleanly yet). A CLI flag
+always wins over what's declared here: `--fail-on-…` turns a policy on
+regardless of `## Meta`, and `--no-fail-on-…` forces it off regardless
+— `## Meta` only supplies the default when neither form is given. See
+[docs/cli.md](cli.md#analyse-alias-analyze) for exactly how
 `analyse`/`lint` fail once one of these is on.
 
 A bullet that doesn't match one of the three exactly is a parse error
