@@ -36,6 +36,27 @@ final class DebugRulesetCommandTest extends TestCase
         );
     }
 
+    public function testDerivesListedPlaceholderValuesWithoutSource(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/DemoApp';
+        $configPath = tempnam(sys_get_temp_dir(), 'spandrel-yaml-');
+        self::assertIsString($configPath);
+        file_put_contents($configPath, "ruleset: architecture.md\n");
+
+        try {
+            $tester = $this->tester();
+            $exitCode = $tester->execute([
+                '--ruleset' => $fixtures.'/architecture-placeholder-values.md',
+                '--config' => $configPath,
+            ]);
+
+            self::assertSame(Command::SUCCESS, $exitCode);
+            self::assertStringContainsString('- **Reporting_Infrastructure**: `App\Reporting\Infrastructure\**`', $tester->getDisplay());
+        } finally {
+            unlink($configPath);
+        }
+    }
+
     public function testOmitsMetaSectionWhenNoPolicyIsDeclared(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';

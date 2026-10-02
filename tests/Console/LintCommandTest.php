@@ -308,6 +308,52 @@ final class LintCommandTest extends TestCase
         self::assertStringNotContainsString('not used in any rule', $tester->getDisplay());
     }
 
+    public function testListedPlaceholderValuesLoadWithoutSource(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/DemoApp';
+        $configPath = tempnam(sys_get_temp_dir(), 'spandrel-yaml-');
+        self::assertIsString($configPath);
+        file_put_contents($configPath, "ruleset: architecture.md\n");
+
+        try {
+            $tester = $this->tester();
+            $exitCode = $tester->execute([
+                '--ruleset' => $fixtures.'/architecture-placeholder-values.md',
+                '--config' => $configPath,
+            ]);
+
+            self::assertSame(Command::SUCCESS, $exitCode);
+            self::assertStringContainsString('is valid', $tester->getDisplay());
+        } finally {
+            unlink($configPath);
+        }
+    }
+
+    public function testFailOnUnusedLayersFlagsAListedModuleWithoutRules(): void
+    {
+        $fixtures = __DIR__.'/../Fixtures/DemoApp';
+        $configPath = tempnam(sys_get_temp_dir(), 'spandrel-yaml-');
+        self::assertIsString($configPath);
+        file_put_contents($configPath, "ruleset: architecture.md\n");
+
+        try {
+            $tester = $this->tester();
+            $exitCode = $tester->execute([
+                '--ruleset' => $fixtures.'/architecture-placeholder-values.md',
+                '--config' => $configPath,
+                '--fail-on-unused-layers' => true,
+            ]);
+
+            self::assertSame(Command::INVALID, $exitCode);
+            $display = $tester->getDisplay();
+            self::assertStringContainsString('Layer "Reporting" is not used', $display);
+            self::assertStringNotContainsString('Reporting_Domain', $display);
+            self::assertStringNotContainsString('Layer "Billing"', $display);
+        } finally {
+            unlink($configPath);
+        }
+    }
+
     public function testFailOnUnusedLayersSucceedsWhenEveryLayerIsCovered(): void
     {
         $fixtures = __DIR__.'/../Fixtures/DemoApp';

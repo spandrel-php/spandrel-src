@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Spandrel\Spandrel\Tests\Ruleset;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Spandrel\Spandrel\Graph\DependencyKind;
 use Spandrel\Spandrel\Graph\Element;
@@ -1379,6 +1380,206 @@ final class RulesetParserTest extends TestCase
         self::assertSame('Domain', $ruleset->rules[0]->subject);
     }
 
+    public function testListedValuesOnEveryAxisDeriveTheFullCrossProductWithoutElements(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+              - with Modules `Billing`, `Shipping`, and `Reporting`
+              - with Layers `Domain` and `Infrastructure`
+            MARKDOWN);
+
+        self::assertSame(
+            [
+                'Billing_Domain', 'Billing_Infrastructure',
+                'Shipping_Domain', 'Shipping_Infrastructure',
+                'Reporting_Domain', 'Reporting_Infrastructure',
+                'Billing', 'Shipping', 'Reporting',
+                'Domain', 'Infrastructure',
+            ],
+            $this->layerNames($ruleset->layers),
+        );
+
+        $layersByName = $this->layersByName($ruleset->layers);
+        self::assertSame(['App\Reporting\Infrastructure\**'], $layersByName['Reporting_Infrastructure']->patterns);
+        self::assertTrue($layersByName['Reporting']->isGroup);
+        self::assertSame(['Reporting_Domain', 'Reporting_Infrastructure'], $this->layerNames($layersByName['Reporting']->members));
+    }
+
+    public function testRuleReferencingAListedValueLoadsWithoutCode(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+              - with Modules `Runs` and `Results`
+
+            ## Rules
+
+            - `Results` may only depend on `Runs`
+            MARKDOWN);
+
+        self::assertCount(1, $ruleset->rules);
+        self::assertSame('Results', $ruleset->rules[0]->subject);
+    }
+
+    public function testListedAxisIsClosedAgainstUnlistedValuesInTheCode(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+              - with Modules `Runs`
+              - with Layers `Domain`
+            MARKDOWN, $this->elements(
+            'App\Runs\Domain\Run',
+            'App\Reslts\Domain\Result',
+            'App\Runs\Infrastucture\RunRepository',
+        ));
+
+        self::assertSame(['Runs_Domain', 'Runs', 'Domain'], $this->layerNames($ruleset->layers));
+    }
+
+    public function testUnlistedAxisIsStillDiscoveredFromTheCode(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+              - with Modules `Runs` and `Results`
+            MARKDOWN, $this->elements(
+            'App\Runs\Domain\Run',
+            'App\Runs\Infrastructure\RunRepository',
+            'App\Other\Domain\Thing',
+        ));
+
+        self::assertSame(
+            ['Runs_Domain', 'Runs_Infrastructure', 'Runs', 'Results', 'Domain', 'Infrastructure'],
+            $this->layerNames($ruleset->layers),
+        );
+
+        $layersByName = $this->layersByName($ruleset->layers);
+        self::assertTrue($layersByName['Results']->isGroup);
+        self::assertSame([], $layersByName['Results']->members);
+    }
+
+    public function testListedValuesCreateTheirGroupsEvenWhenAnotherAxisFindsNoCode(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\{Layer}\**`
+              - with Modules `Runs` and `Results`
+            MARKDOWN);
+
+        self::assertSame(['Runs', 'Results'], $this->layerNames($ruleset->layers));
+        self::assertSame([], $this->layersByName($ruleset->layers)['Runs']->members);
+    }
+
+    public function testSingleCapturePlaceholderWithListedValuesDerivesOneLeafPerValue(): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+              - with Modules `Billing` and `Shipping`
+            MARKDOWN);
+
+        self::assertSame(['Billing', 'Shipping'], $this->layerNames($ruleset->layers));
+        self::assertFalse($ruleset->layers[0]->isGroup);
+        self::assertSame(['App\Billing\**'], $ruleset->layers[0]->patterns);
+    }
+
+    #[DataProvider('captureWordForms')]
+    public function testValuesBulletNamesItsCaptureInSingularOrPluralForm(string $capture, string $word): void
+    {
+        $ruleset = (new RulesetParser())->parse(<<<MARKDOWN
+            ## Layers
+
+            - `App\\{{$capture}}\\**`
+              - with {$word} `Alpha`
+            MARKDOWN);
+
+        self::assertSame(['Alpha'], $this->layerNames($ruleset->layers));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function captureWordForms(): iterable
+    {
+        yield 'singular' => ['Module', 'Module'];
+        yield '+s' => ['Module', 'Modules'];
+        yield '+es' => ['Class', 'Classes'];
+        yield 'y to ies' => ['Category', 'Categories'];
+    }
+
+    #[DataProvider('malformedValuesBullets')]
+    public function testMalformedValuesBulletIsALoadError(string $markdown, int $line, string $reason): void
+    {
+        $this->expectException(RulesetParseException::class);
+        $this->expectExceptionMessageMatches(sprintf('/^line %d: %s/', $line, preg_quote($reason, '/')));
+
+        (new RulesetParser())->parse($markdown);
+    }
+
+    /**
+     * @return iterable<string, array{string, int, string}>
+     */
+    public static function malformedValuesBullets(): iterable
+    {
+        yield 'invalid value name' => [<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+              - with Modules `Billing` and `Ship-ping`
+            MARKDOWN, 4, 'invalid value "Ship-ping"'];
+
+        yield 'duplicate value' => [<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+              - with Modules `Billing`, `Shipping`, and `Billing`
+            MARKDOWN, 4, 'duplicate value "Billing"'];
+
+        yield 'word maps to no capture' => [<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+              - with Moduls `Billing`
+            MARKDOWN, 4, '"Moduls" names no capture'];
+
+        yield 'word maps to two captures' => [<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Layer}\{Layers}\**`
+              - with Layers `Domain`
+            MARKDOWN, 4, '"Layers" names more than one capture'];
+
+        yield 'capture listed twice' => [<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+              - with Modules `Billing`
+              - with Module `Shipping`
+            MARKDOWN, 5, 'values for {Module} are already listed'];
+
+        yield 'under an explicit layer' => [<<<'MARKDOWN'
+            ## Layers
+
+            - **Billing**: `App\Billing\**`
+              - with Modules `Billing`
+            MARKDOWN, 4, 'values can only follow a placeholder bullet'];
+
+        yield 'empty list' => [<<<'MARKDOWN'
+            ## Layers
+
+            - `App\{Module}\**`
+              - with Modules
+            MARKDOWN, 4, 'no values listed'];
+    }
+
     public function testElementKindFilterOnObject(): void
     {
         $ruleset = (new RulesetParser())->parse(<<<'MARKDOWN'
@@ -1703,6 +1904,24 @@ final class RulesetParserTest extends TestCase
         } catch (RulesetParseException $e) {
             self::assertStringStartsWith('line 3:', $e->getMessage());
         }
+    }
+
+    /**
+     * @param Layer[] $layers
+     * @return string[]
+     */
+    private function layerNames(array $layers): array
+    {
+        return array_values(array_map(static fn (Layer $layer): string => $layer->name, $layers));
+    }
+
+    /**
+     * @param Layer[] $layers
+     * @return array<string, Layer>
+     */
+    private function layersByName(array $layers): array
+    {
+        return array_combine($this->layerNames($layers), array_values($layers));
     }
 
     /**
