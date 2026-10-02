@@ -63,7 +63,7 @@ There are four ways to declare one:
 | Form | Syntax | Use for |
 |---|---|---|
 | Explicit | `` - **Name**: `pattern`[, `pattern`...] [except ...] `` | The common case — a stable, named concept. |
-| [Placeholder](#auto-derived-layers-placeholders) | `` - `App\{Name}\**` `` | One layer per distinct namespace segment, derived from the code — no per-layer bullet needed. |
+| [Placeholder](#auto-derived-layers-placeholders) | `` - `App\{Name}\**` `` | One layer per distinct namespace segment, derived from the code — no per-layer bullet needed. Indented `with Names` bullets list the values up front. |
 | [Group](#group-layers) | `` - **Name** groups `A` and `B` [except ...] `` | A named union of already-declared layers. |
 | [External](#external-layers) | `` - **Name** matches `pattern`[, `pattern`...] [except ...] `` | A vendor/third-party namespace — no `Element` behind it, nothing needed in `source.paths`. |
 
@@ -285,7 +285,47 @@ for this yet" once layers stop being hand-declared.
 
 Without any source to derive against (e.g. `debug:ruleset` run with no
 `paths`), a placeholder bullet can't derive anything — its raw
-template line is shown as-is instead of silently vanishing.
+template line is shown as-is instead of silently vanishing. Listed
+values (below) are the exception.
+
+#### Listing values before the code exists
+
+Module boundaries are usually known before the code is. A `with`
+bullet, indented under the placeholder, lists a capture's values up
+front, so their layers and the rules referencing them exist before the
+first class does:
+
+```markdown
+## Layers
+
+- `App\{Module}\{Layer}\**`
+  - with Modules `Billing`, `Shipping`, and `Reporting`
+  - with Layers `Domain` and `Infrastructure`
+
+## Rules
+
+- `Domain` must not depend on `Infrastructure`
+- `Shipping` may only depend on `Shipping` and `Billing`
+```
+
+The word after `with` names the capture, singular or plural (`Module`,
+`Modules`, `Classes` for `{Class}`, `Categories` for `{Category}`).
+
+- A listed capture is **closed**: only its values are derived. Code in
+  an unlisted namespace (a typo like `App\Reslts\Domain`) matches no
+  layer, which `Any class not in a layer violates rules.` turns into a
+  failure.
+- A capture without a `with` bullet is still discovered from the code.
+- Every listed value creates its group, even with no code yet, so
+  `Reporting` above can be referenced right away.
+- With every capture listed, the leaves are the full cross product
+  (`Billing_Domain` … `Reporting_Infrastructure`), derived without any
+  source. A combination with no code is an empty leaf; `lint <paths>`
+  reports it as matching zero elements.
+
+Combined with `Every layer must be used in a rule.`, this makes a new
+module come with rules: a listed module nobody wrote a rule for fails
+`lint`.
 
 ## Meta
 

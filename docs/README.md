@@ -126,7 +126,7 @@ side:
 | Form | Syntax | Use for |
 |---|---|---|
 | Explicit | `` - **Name**: `pattern`[, `pattern`...] [except ...] `` | A named namespace pattern (or several), the common case. |
-| Placeholder | `` - `App\{Name}\**` `` | Derives one layer per distinct namespace segment found in the code — no per-layer bullet needed. Two `{Name}` captures derive a 2D set plus one group layer per axis value. |
+| Placeholder | `` - `App\{Name}\**` `` | Derives one layer per distinct namespace segment found in the code — no per-layer bullet needed. Two `{Name}` captures derive a 2D set plus one group layer per axis value. An indented `` - with Names `A`, `B` `` bullet lists a capture's values before the code exists. |
 | Group | `` - **Name** groups `A` and `B` [except ...] `` | Names a union of already-declared layers (leaf or group). |
 | External | `` - **Name** matches `pattern`[, `pattern`...] [except ...] `` | Names a **vendor/third-party** namespace pattern — no `Element` behind it, so it needs nothing added to `source.paths`. Works everywhere a layer name does, except element-kind filters. |
 

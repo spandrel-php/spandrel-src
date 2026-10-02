@@ -16,6 +16,7 @@ use Spandrel\Spandrel\Graph\ElementKind;
  * @phpstan-type ExternalDeclaration array{kind: 'external', name: string, patterns: string[], exceptTokens: string[], line: int}
  * @phpstan-type GroupDeclaration array{kind: 'group', name: string, memberTokens: string[], exceptTokens: string[], line: int}
  * @phpstan-type LayerDeclaration ExplicitDeclaration|ExternalDeclaration|GroupDeclaration
+ * @phpstan-type ValuesBullet array{word: string, valuesText: string, line: int, text: string}
  */
 final class RulesetParser
 {
@@ -30,6 +31,9 @@ final class RulesetParser
     private const PLACEHOLDER_BULLET_PATTERN = '/^-\s*`([^`]+)`\s*$/';
 
     private const CAPTURE_SEGMENT_SHAPE = '/^\{([A-Za-z][A-Za-z0-9_]*)\}$/';
+
+    // Indented under a placeholder bullet: `- with Modules `A`, `B`, and `C``.
+    private const PLACEHOLDER_VALUES_PATTERN = '/^-\s*with\s+([A-Za-z][A-Za-z0-9_]*)(?:\s+(.*))?$/';
 
     private const NULLARY_PATTERN = '/^-\s*(.+?)\s+(depends on nothing|may depend on anything)\s*$/';
 
@@ -191,12 +195,38 @@ final class RulesetParser
         $declarations = [];
         /** @var string[] $placeholderTemplates */
         $placeholderTemplates = [];
+        /** @var array{template: string, line: int, valuesBullets: array<int, ValuesBullet>}|null $pendingPlaceholder */
+        $pendingPlaceholder = null;
 
         foreach ($this->linesInSection($markdown, 'Layers') as $lineNumber => $line) {
             $trimmed = trim($line);
 
             if ($trimmed === '' || !str_starts_with($trimmed, '-')) {
                 continue;
+            }
+
+            $isIndented = $line !== ltrim($line);
+
+            if ($isIndented && preg_match(self::PLACEHOLDER_VALUES_PATTERN, $trimmed, $matches) === 1) {
+                if ($pendingPlaceholder === null) {
+                    throw RulesetParseException::placeholderValuesWithoutPlaceholder($lineNumber, $line);
+                }
+
+                $pendingPlaceholder['valuesBullets'][] = [
+                    'word' => $matches[1],
+                    'valuesText' => $matches[2] ?? '',
+                    'line' => $lineNumber,
+                    'text' => $line,
+                ];
+
+                continue;
+            }
+
+            // Any other bullet ends the pending placeholder's block, so it's derived
+            // here, keeping declarations in file order.
+            if ($pendingPlaceholder !== null) {
+                $this->flushPlaceholder($pendingPlaceholder, $elements, $names, $declarations, $placeholderTemplates);
+                $pendingPlaceholder = null;
             }
 
             if (preg_match(self::EXPLICIT_LAYER_PATTERN, $trimmed, $matches) === 1) {
@@ -269,8 +299,7 @@ final class RulesetParser
             }
 
             if (preg_match(self::PLACEHOLDER_BULLET_PATTERN, $trimmed, $matches) === 1) {
-                $placeholderTemplates[] = $matches[1];
-                array_push($declarations, ...$this->derivePlaceholderLayers($matches[1], $elements, $lineNumber, $names));
+                $pendingPlaceholder = ['template' => $matches[1], 'line' => $lineNumber, 'valuesBullets' => []];
 
                 continue;
             }
@@ -278,7 +307,38 @@ final class RulesetParser
             throw RulesetParseException::malformedLayerBullet($lineNumber, $line);
         }
 
+        if ($pendingPlaceholder !== null) {
+            $this->flushPlaceholder($pendingPlaceholder, $elements, $names, $declarations, $placeholderTemplates);
+        }
+
         return [$declarations, $placeholderTemplates];
+    }
+
+    /**
+     * A fully listed placeholder needs no source to derive, so its raw template
+     * isn't kept for source-less display.
+     *
+     * @param array{template: string, line: int, valuesBullets: array<int, ValuesBullet>} $placeholder
+     * @param \Spandrel\Spandrel\Graph\Element[] $elements
+     * @param array<string, true> $names
+     * @param array<int, LayerDeclaration> $declarations
+     * @param string[] $placeholderTemplates
+     */
+    private function flushPlaceholder(array $placeholder, array $elements, array &$names, array &$declarations, array &$placeholderTemplates): void
+    {
+        [$derived, $fullyListed] = $this->derivePlaceholderLayers(
+            $placeholder['template'],
+            $placeholder['valuesBullets'],
+            $elements,
+            $placeholder['line'],
+            $names,
+        );
+
+        array_push($declarations, ...$derived);
+
+        if (!$fullyListed) {
+            $placeholderTemplates[] = $placeholder['template'];
+        }
     }
 
     /**
@@ -288,21 +348,31 @@ final class RulesetParser
      * distinct value on each axis, so a rule can still target a whole axis
      * (`` `Domain` must not depend on `Infrastructure` `` across every module).
      *
+     * A capture with a `with` bullet is closed: only its listed values are derived,
+     * and each creates its group even before any code exists. With every capture
+     * listed, the leaves are their full cross product, independent of the code.
+     *
+     * @param array<int, ValuesBullet> $valuesBullets
      * @param \Spandrel\Spandrel\Graph\Element[] $elements
      * @param array<string, true> $names
-     * @return array<int, LayerDeclaration> synthetic 'explicit' (one per distinct
-     *                                            combination) and, for two captures,
-     *                                            'group' declarations (one per distinct
-     *                                            value on each axis)
+     * @return array{0: array<int, LayerDeclaration>, 1: bool} synthetic 'explicit' (one
+     *                                                         per combination) and, for two
+     *                                                         captures, 'group' declarations
+     *                                                         (one per value on each axis);
+     *                                                         whether every capture is listed
      */
-    private function derivePlaceholderLayers(string $template, array $elements, int $lineNumber, array &$names): array
+    private function derivePlaceholderLayers(string $template, array $valuesBullets, array $elements, int $lineNumber, array &$names): array
     {
         $templateSegments = explode('\\', ltrim($template, '\\'));
+        /** @var array<int, int> $captureIndexes axis => segment index */
         $captureIndexes = [];
+        /** @var array<int, string> $captureNames axis => capture name */
+        $captureNames = [];
 
         foreach ($templateSegments as $i => $segment) {
-            if (preg_match(self::CAPTURE_SEGMENT_SHAPE, $segment) === 1) {
+            if (preg_match(self::CAPTURE_SEGMENT_SHAPE, $segment, $captureMatch) === 1) {
                 $captureIndexes[] = $i;
+                $captureNames[] = $captureMatch[1];
             }
         }
 
@@ -318,10 +388,33 @@ final class RulesetParser
             }
         }
 
+        $listedByAxis = $this->resolvePlaceholderValues($valuesBullets, $captureNames, $template);
+        $fullyListed = count($listedByAxis) === count($captureIndexes);
+
         /** @var array<string, string[]> $combosByKey NUL-joined dedup key => ordered captured values */
         $combosByKey = [];
 
-        foreach ($elements as $element) {
+        if ($fullyListed) {
+            $combos = [[]];
+
+            foreach (array_keys($captureIndexes) as $axis) {
+                $next = [];
+
+                foreach ($combos as $combo) {
+                    foreach ($listedByAxis[$axis] as $value) {
+                        $next[] = [...$combo, $value];
+                    }
+                }
+
+                $combos = $next;
+            }
+
+            foreach ($combos as $combo) {
+                $combosByKey[implode("\0", $combo)] = $combo;
+            }
+        }
+
+        foreach ($fullyListed ? [] : $elements as $element) {
             $fqcnSegments = explode('\\', ltrim($element->fqcn, '\\'));
 
             // Captures take namespace segments only, never the class name itself.
@@ -332,7 +425,11 @@ final class RulesetParser
             $captured = [];
             $substituted = $templateSegments;
 
-            foreach ($captureIndexes as $idx) {
+            foreach ($captureIndexes as $axis => $idx) {
+                if (isset($listedByAxis[$axis]) && !in_array($fqcnSegments[$idx], $listedByAxis[$axis], true)) {
+                    continue 2;
+                }
+
                 $captured[] = $fqcnSegments[$idx];
                 $substituted[$idx] = $fqcnSegments[$idx];
             }
@@ -374,15 +471,18 @@ final class RulesetParser
         }
 
         if (count($captureIndexes) > 1) {
-            foreach ($membersByAxisValue as $groupsForAxis) {
-                foreach ($groupsForAxis as $axisValue => $memberNames) {
+            foreach (array_keys($captureIndexes) as $axis) {
+                $axisValues = $listedByAxis[$axis] ?? array_keys($membersByAxisValue[$axis] ?? []);
+
+                foreach ($axisValues as $axisValue) {
+                    $axisValue = (string) $axisValue;
                     $this->assertUndeclared($axisValue, $names, $lineNumber);
                     $names[$axisValue] = true;
 
                     $declarations[] = [
                         'kind' => 'group',
                         'name' => $axisValue,
-                        'memberTokens' => $memberNames,
+                        'memberTokens' => $membersByAxisValue[$axis][$axisValue] ?? [],
                         'exceptTokens' => [],
                         'line' => $lineNumber,
                     ];
@@ -390,7 +490,83 @@ final class RulesetParser
             }
         }
 
-        return $declarations;
+        return [$declarations, $fullyListed];
+    }
+
+    /**
+     * @param array<int, ValuesBullet> $valuesBullets
+     * @param array<int, string> $captureNames axis => capture name
+     * @return array<int, string[]> axis => listed values, only for listed axes
+     */
+    private function resolvePlaceholderValues(array $valuesBullets, array $captureNames, string $template): array
+    {
+        $listedByAxis = [];
+
+        foreach ($valuesBullets as $bullet) {
+            $values = $this->extractNames($bullet['valuesText']);
+
+            if ($values === []) {
+                throw RulesetParseException::emptyPlaceholderValues($bullet['line'], $bullet['text']);
+            }
+
+            $axes = array_keys(array_filter(
+                $captureNames,
+                static fn (string $capture): bool => in_array($bullet['word'], self::captureWordForms($capture), true),
+            ));
+
+            if ($axes === []) {
+                throw RulesetParseException::unknownPlaceholderCapture($bullet['line'], $bullet['word'], $template);
+            }
+
+            if (count($axes) > 1) {
+                throw RulesetParseException::ambiguousPlaceholderCapture(
+                    $bullet['line'],
+                    $bullet['word'],
+                    array_map(static fn (int $axis): string => $captureNames[$axis], $axes),
+                );
+            }
+
+            $axis = $axes[0];
+
+            if (isset($listedByAxis[$axis])) {
+                throw RulesetParseException::placeholderValuesAlreadyListed($bullet['line'], $captureNames[$axis]);
+            }
+
+            $seen = [];
+
+            foreach ($values as $value) {
+                if (preg_match(self::LAYER_NAME_SHAPE, $value) !== 1) {
+                    throw RulesetParseException::invalidPlaceholderValue($bullet['line'], $value, $captureNames[$axis]);
+                }
+
+                if (isset($seen[$value])) {
+                    throw RulesetParseException::duplicatePlaceholderValue($bullet['line'], $value, $captureNames[$axis]);
+                }
+
+                $seen[$value] = true;
+            }
+
+            $listedByAxis[$axis] = $values;
+        }
+
+        return $listedByAxis;
+    }
+
+    /**
+     * The words a `with` bullet may use for a capture: the name itself, or a plural
+     * by fixed English rules (`+s`, `+es`, `y` → `ies`).
+     *
+     * @return string[]
+     */
+    private static function captureWordForms(string $capture): array
+    {
+        $forms = [$capture, $capture.'s', $capture.'es'];
+
+        if (str_ends_with($capture, 'y')) {
+            $forms[] = substr($capture, 0, -1).'ies';
+        }
+
+        return $forms;
     }
 
     /**

@@ -116,7 +116,7 @@ final class DebugRulesetCommand extends Command
         foreach ($ruleset->layers as $layer) {
             $patterns = implode(', ', array_map(static fn (string $pattern): string => "`$pattern`", $layer->patterns));
 
-            $io->writeln(sprintf('- **%s**: %s', $layer->name, $patterns));
+            $io->writeln(rtrim(sprintf('- **%s**: %s', $layer->name, $patterns)));
         }
 
         // Only shown when there was no source to derive against.

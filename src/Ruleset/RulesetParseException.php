@@ -167,4 +167,61 @@ final class RulesetParseException extends \RuntimeException
             trim($text),
         ));
     }
+
+    public static function placeholderValuesWithoutPlaceholder(int $line, string $text): self
+    {
+        return new self(sprintf(
+            "line %d: values can only follow a placeholder bullet\n  %s\n"
+            ."Expected it indented under: - `<pattern with one or two {Name} segments>`",
+            $line,
+            trim($text),
+        ));
+    }
+
+    public static function emptyPlaceholderValues(int $line, string $text): self
+    {
+        return new self(sprintf(
+            "line %d: no values listed\n  %s\nExpected: - with <Name>s `Value`[, `Value`...]",
+            $line,
+            trim($text),
+        ));
+    }
+
+    public static function unknownPlaceholderCapture(int $line, string $word, string $template): self
+    {
+        return new self(sprintf('line %d: "%s" names no capture in `%s`', $line, $word, $template));
+    }
+
+    /**
+     * @param string[] $captures
+     */
+    public static function ambiguousPlaceholderCapture(int $line, string $word, array $captures): self
+    {
+        return new self(sprintf(
+            'line %d: "%s" names more than one capture: %s',
+            $line,
+            $word,
+            implode(', ', array_map(static fn (string $capture): string => '{'.$capture.'}', $captures)),
+        ));
+    }
+
+    public static function placeholderValuesAlreadyListed(int $line, string $capture): self
+    {
+        return new self(sprintf('line %d: values for {%s} are already listed', $line, $capture));
+    }
+
+    public static function invalidPlaceholderValue(int $line, string $value, string $capture): self
+    {
+        return new self(sprintf(
+            'line %d: invalid value "%s" for {%s}, expected a layer name (letters, digits and `_`, starting with a letter)',
+            $line,
+            $value,
+            $capture,
+        ));
+    }
+
+    public static function duplicatePlaceholderValue(int $line, string $value, string $capture): self
+    {
+        return new self(sprintf('line %d: duplicate value "%s" for {%s}', $line, $value, $capture));
+    }
 }
