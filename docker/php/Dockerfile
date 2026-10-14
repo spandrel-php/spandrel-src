@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # php:8.5-cli-alpine — pinned by digest; bumped by Dependabot
-FROM php:8.5-cli-alpine@sha256:aa66ee4275e0472bafcd18e35142499fcbda6ac90e641e751418e052e6a0d812
+FROM php:8.5-cli-alpine@sha256:93684051146ec037620855feb77f278090bde45ddc030801cd3f2a7685bc4deb
 
 # git: box.json's git-version needs `git describe`/`git log` at compile time
 RUN apk add --no-cache git
